@@ -21,6 +21,14 @@ pnpm install
 pnpm emulators          # builds functions, then starts Auth, Firestore, Functions and the UI at http://127.0.0.1:4000
 ```
 
+The Functions emulator does not fire scheduled functions. To run the nightly rollover by hand
+while the emulators are up (optionally with a fake clock):
+
+```sh
+pnpm --filter functions rollover:dev
+pnpm --filter functions rollover:dev 2026-10-29T23:05:00Z
+```
+
 ## Tests
 
 ```sh

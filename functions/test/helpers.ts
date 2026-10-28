@@ -1,5 +1,5 @@
 import { getApps, initializeApp as initAdmin } from "firebase-admin/app";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { getFirestore as getAdminFirestore, Timestamp } from "firebase-admin/firestore";
 import { deleteApp, initializeApp, type FirebaseApp } from "firebase/app";
 import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
@@ -52,4 +52,43 @@ export function newClient() {
 
 export async function disposeClients(): Promise<void> {
   await Promise.all(clientApps.splice(0).map((a) => deleteApp(a).catch(() => undefined)));
+}
+
+export async function seedUser(uid: string, fields: Record<string, unknown> = {}) {
+  await adminDb()
+    .doc(`users/${uid}`)
+    .set({
+      name: "Test",
+      timezone: "Africa/Lagos",
+      reminderEnabled: false,
+      reminderTime: "20:00",
+      theme: "system",
+      freezesAvailable: 1,
+      nextRolloverAt: Timestamp.now(),
+      lastReminderDate: null,
+      lastClosedDate: "2026-01-01",
+      ...fields,
+    });
+}
+
+export async function seedHabit(uid: string, habitId: string, checkIns: string[] = [], freezes: string[] = []) {
+  const ref = adminDb().doc(`users/${uid}/habits/${habitId}`);
+  await ref.set({
+    name: "Read",
+    color: "#13795B",
+    createdAt: Timestamp.now(),
+    currentStreak: 0,
+    bestStreak: 0,
+    lastCheckInDate: null,
+  });
+  await Promise.all([
+    ...checkIns.map((d) => ref.collection("checkIns").doc(d).set({ createdAt: Timestamp.now() })),
+    ...freezes.map((d) => ref.collection("freezeUses").doc(d).set({ createdAt: Timestamp.now() })),
+  ]);
+  return ref;
+}
+
+export async function checkInIds(uid: string, habitId: string) {
+  const snap = await adminDb().collection(`users/${uid}/habits/${habitId}/checkIns`).get();
+  return snap.docs.map((d) => d.id).sort();
 }

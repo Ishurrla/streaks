@@ -1,8 +1,12 @@
+import { logger } from "firebase-functions";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { checkInFor, undoCheckInFor } from "./checkins";
 import { deleteHabitFor } from "./habits";
 import { ensureProfileFor, type EnsureProfileInput } from "./profile";
+import { runRollover } from "./rollover";
+import { updateTimezoneFor } from "./timezone";
 
 export const REGION = "europe-west1";
 setGlobalOptions({ region: REGION, maxInstances: 10 });
@@ -46,3 +50,18 @@ export const deleteHabit = onCall(async (req) => {
   const uid = requireUid(req);
   return deleteHabitFor(uid, requireHabitId(req.data));
 });
+
+export const updateTimezone = onCall(async (req) => {
+  const uid = requireUid(req);
+  return updateTimezoneFor(uid, asObject(req.data).timezone, new Date());
+});
+
+// Every user's day ends at their own local midnight, so check every 15 minutes for
+// users whose nextRolloverAt has passed. All logic lives in runRollover.
+export const rollover = onSchedule(
+  { schedule: "every 15 minutes", timeZone: "Etc/UTC", timeoutSeconds: 540, retryCount: 0 },
+  async () => {
+    const result = await runRollover(new Date());
+    logger.info("Rollover finished", result);
+  },
+);

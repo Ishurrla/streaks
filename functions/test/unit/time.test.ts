@@ -9,6 +9,11 @@ describe("localDate", () => {
     expect(localDate(instant, "Asia/Tokyo")).toBe("2027-01-01");
     expect(localDate(instant, "America/Los_Angeles")).toBe("2026-12-31");
   });
+
+  it("throws on an invalid timezone", () => {
+    expect(() => localDate(new Date(), "Not/AZone")).toThrow();
+    expect(() => nextLocalMidnight(new Date(), "Not/AZone")).toThrow();
+  });
 });
 
 describe("nextLocalMidnight", () => {

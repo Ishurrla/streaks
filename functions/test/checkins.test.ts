@@ -1,50 +1,10 @@
-import { Timestamp } from "firebase-admin/firestore";
 import { FunctionsError } from "firebase/functions";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { checkInFor, undoCheckInFor } from "../src/checkins";
 import { deleteHabitFor } from "../src/habits";
-import { adminDb, clearFirestore, disposeClients, newClient } from "./helpers";
+import { adminDb, checkInIds, clearFirestore, disposeClients, newClient, seedHabit, seedUser } from "./helpers";
 
 const UID = "u1";
-
-async function seedUser(uid: string, fields: Record<string, unknown> = {}) {
-  await adminDb()
-    .doc(`users/${uid}`)
-    .set({
-      name: "Test",
-      timezone: "Africa/Lagos",
-      reminderEnabled: false,
-      reminderTime: "20:00",
-      theme: "system",
-      freezesAvailable: 1,
-      nextRolloverAt: Timestamp.now(),
-      lastReminderDate: null,
-      lastClosedDate: "2026-01-01",
-      ...fields,
-    });
-}
-
-async function seedHabit(uid: string, habitId: string, checkIns: string[] = [], freezes: string[] = []) {
-  const ref = adminDb().doc(`users/${uid}/habits/${habitId}`);
-  await ref.set({
-    name: "Read",
-    color: "#13795B",
-    createdAt: Timestamp.now(),
-    currentStreak: 0,
-    bestStreak: 0,
-    lastCheckInDate: null,
-  });
-  await Promise.all([
-    ...checkIns.map((d) => ref.collection("checkIns").doc(d).set({ createdAt: Timestamp.now() })),
-    ...freezes.map((d) => ref.collection("freezeUses").doc(d).set({ createdAt: Timestamp.now() })),
-  ]);
-  return ref;
-}
-
-async function checkInIds(uid: string, habitId: string) {
-  const snap = await adminDb().collection(`users/${uid}/habits/${habitId}/checkIns`).get();
-  return snap.docs.map((d) => d.id).sort();
-}
 
 const code = (c: string) => (e: unknown) =>
   (e as { code?: string }).code === c || (e as { code?: string }).code === `functions/${c}`;

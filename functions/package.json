@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && firebase emulators:exec --project demo-streaks --only auth,firestore,functions \"vitest run\"",
-    "test:unit": "vitest run test/unit --config vitest.unit.config.ts"
+    "test:unit": "vitest run test/unit --config vitest.unit.config.ts",
+    "rollover:dev": "pnpm run build && node scripts/run-rollover.mjs"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",

@@ -8,7 +8,9 @@ export function isValidTimezone(tz: unknown): tz is string {
 
 /** The calendar date (YYYY-MM-DD) that `now` falls on in `timezone`. */
 export function localDate(now: Date, timezone: string): string {
-  return DateTime.fromJSDate(now, { zone: timezone }).toISODate()!;
+  const date = DateTime.fromJSDate(now, { zone: timezone }).toISODate();
+  if (!date) throw new Error(`Invalid timezone: ${timezone}`);
+  return date;
 }
 
 /**
@@ -17,5 +19,7 @@ export function localDate(now: Date, timezone: string): string {
  * first valid instant of the day, which is still the start of that local date.
  */
 export function nextLocalMidnight(now: Date, timezone: string): Date {
-  return DateTime.fromJSDate(now, { zone: timezone }).startOf("day").plus({ days: 1 }).toJSDate();
+  const local = DateTime.fromJSDate(now, { zone: timezone });
+  if (!local.isValid) throw new Error(`Invalid timezone: ${timezone}`);
+  return local.startOf("day").plus({ days: 1 }).toJSDate();
 }

@@ -16,7 +16,7 @@ export function habitRef(uid: string, habitId: string): DocumentReference {
 }
 
 /** Every completed date for a habit, read inside the transaction. Only IDs are fetched. */
-async function readHistory(tx: Transaction, habit: DocumentReference) {
+export async function readHistory(tx: Transaction, habit: DocumentReference) {
   const [checkIns, freezes] = await Promise.all([
     tx.get(habit.collection("checkIns").select()),
     tx.get(habit.collection("freezeUses").select()),
@@ -51,7 +51,7 @@ async function loadContext(tx: Transaction, uid: string, habitId: string, now: D
   return { habit, habitSnap, today };
 }
 
-function currentStats(snap: DocumentSnapshot): StreakStats {
+export function currentStats(snap: DocumentSnapshot): StreakStats {
   return {
     currentStreak: (snap.get("currentStreak") as number) ?? 0,
     bestStreak: (snap.get("bestStreak") as number) ?? 0,
