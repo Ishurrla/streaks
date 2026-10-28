@@ -1,7 +1,8 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin";
 import { NAME_MAX } from "./model";
-import { DEFAULT_TIMEZONE, isValidTimezone, nextLocalMidnight } from "./time";
+import { addDays } from "./streaks";
+import { DEFAULT_TIMEZONE, isValidTimezone, localDate, nextLocalMidnight } from "./time";
 
 export interface EnsureProfileInput {
   name?: unknown;
@@ -41,6 +42,8 @@ export async function ensureProfileFor(
       freezesAvailable: 1,
       nextRolloverAt: Timestamp.fromDate(nextLocalMidnight(now, timezone)),
       lastReminderDate: null,
+      // Nothing before sign-up can be checked in.
+      lastClosedDate: addDays(localDate(now, timezone), -1),
       createdAt: FieldValue.serverTimestamp(),
     });
     return { created: true };

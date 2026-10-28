@@ -36,6 +36,7 @@ describe("ensureProfile (callable)", () => {
       freezesAvailable: 1,
       lastReminderDate: null,
     });
+    expect(data.lastClosedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const rollover = data.nextRolloverAt.toDate() as Date;
     expect(rollover.getTime()).toBeGreaterThan(before);
     expect(rollover.getTime() - before).toBeLessThanOrEqual(24 * 60 * 60 * 1000);

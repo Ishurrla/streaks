@@ -35,6 +35,7 @@ const userDoc = {
   freezesAvailable: 1,
   nextRolloverAt: Timestamp.fromDate(new Date("2026-10-28T23:00:00Z")),
   lastReminderDate: null,
+  lastClosedDate: "2026-10-27",
 };
 
 const habitDoc = {
@@ -128,6 +129,7 @@ describe("user documents", () => {
     await assertFails(updateDoc(ref, { timezone: "Asia/Tokyo" }));
     await assertFails(updateDoc(ref, { nextRolloverAt: Timestamp.now() }));
     await assertFails(updateDoc(ref, { lastReminderDate: "2026-10-28" }));
+    await assertFails(updateDoc(ref, { lastClosedDate: "2026-10-20" }));
     await assertFails(updateDoc(ref, { isAdmin: true }));
     // Sneaking a server field in alongside an allowed one is still rejected.
     await assertFails(updateDoc(ref, { theme: "dark", freezesAvailable: 99 }));
