@@ -4,7 +4,8 @@
   "scripts": {
     "build": "pnpm -r run build",
     "emulators": "pnpm --filter functions build && firebase emulators:start --project demo-streaks",
-    "test": "pnpm --filter functions test"
+    "test": "pnpm --filter functions test && pnpm --filter web test",
+    "dev:web": "pnpm --filter web dev"
   },
   "packageManager": "pnpm@11.1.3"
 }
