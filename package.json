@@ -1,0 +1,10 @@
+{
+  "name": "streaks",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "emulators": "pnpm --filter functions build && firebase emulators:start --project demo-streaks",
+    "test": "pnpm --filter functions test"
+  },
+  "packageManager": "pnpm@11.1.3"
+}
