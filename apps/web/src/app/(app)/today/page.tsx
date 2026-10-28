@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TodayView } from "@/components/views/today-view";
+import { TodayView } from "@/components/today/today-view";
 
 // Rendered behind the client-side auth guard; see ../layout.tsx.
 export const instant = false;

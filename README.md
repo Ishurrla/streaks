@@ -33,6 +33,15 @@ pnpm --filter functions rollover:dev
 pnpm --filter functions rollover:dev 2026-10-29T23:05:00Z
 ```
 
+To give an existing emulator user some habit history (streaks, an at-risk habit, a full calendar):
+
+```sh
+pnpm --filter functions seed:dev ada@example.com
+```
+
+If the dev server ever serves stale CSS after edits, stop it and delete `apps/web/.next`
+(Next.js keeps a persistent dev cache there).
+
 ## Tests
 
 ```sh
