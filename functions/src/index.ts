@@ -2,6 +2,11 @@ import { logger } from "firebase-functions";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { defineString } from "firebase-functions/params";
+import { getMessaging } from "firebase-admin/messaging";
+import { deleteAccountFor } from "./account";
+import { registerPushTokenFor, removePushTokenFor, requireToken } from "./push";
+import { loggingSender, runReminders } from "./reminders";
 import { checkInFor, undoCheckInFor } from "./checkins";
 import { deleteHabitFor } from "./habits";
 import { ensureProfileFor, type EnsureProfileInput } from "./profile";
@@ -63,5 +68,36 @@ export const rollover = onSchedule(
   async () => {
     const result = await runRollover(new Date());
     logger.info("Rollover finished", result);
+  },
+);
+
+export const registerPushToken = onCall(async (req) => {
+  const uid = requireUid(req);
+  const userAgent = req.rawRequest?.headers["user-agent"];
+  return registerPushTokenFor(uid, requireToken(req.data), Array.isArray(userAgent) ? userAgent[0] : userAgent);
+});
+
+export const removePushToken = onCall(async (req) => {
+  const uid = requireUid(req);
+  return removePushTokenFor(uid, requireToken(req.data));
+});
+
+export const deleteAccount = onCall(async (req) => {
+  const uid = requireUid(req);
+  return deleteAccountFor(uid, req.auth?.token.auth_time, new Date());
+});
+
+// Absolute URL of the web app, used as the notification click target. Set it in
+// functions/.env (APP_URL=https://...) before deploying.
+const appUrl = defineString("APP_URL", { default: "" });
+
+// Every 15 minutes, nudge users whose local reminder time has passed and who still have
+// habits to do. FCM is not emulated, so the emulator logs messages instead.
+export const reminders = onSchedule(
+  { schedule: "every 15 minutes", timeZone: "Etc/UTC", timeoutSeconds: 540, retryCount: 0 },
+  async () => {
+    const sender = process.env.FUNCTIONS_EMULATOR === "true" ? loggingSender : getMessaging();
+    const result = await runReminders(new Date(), sender, { appUrl: appUrl.value() || undefined });
+    logger.info("Reminders finished", result);
   },
 );

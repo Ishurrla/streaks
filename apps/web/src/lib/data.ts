@@ -110,6 +110,3 @@ export const callUpdateTimezone = (timezone: string) =>
   httpsCallable<{ timezone: string }, { timezone: string; today: string }>(functions, "updateTimezone")({
     timezone,
   }).then((r) => r.data);
-
-export const callDeleteAccount = () =>
-  httpsCallable<void, { deleted: boolean }>(functions, "deleteAccount")().then((r) => r.data);

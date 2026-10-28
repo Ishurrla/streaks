@@ -2,12 +2,14 @@
 
 import { doc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { FirebaseError } from "firebase/app";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { PageHead } from "@/components/views/page-head";
 import { useAuth } from "@/lib/auth";
-import { callDeleteAccount, callUpdateTimezone } from "@/lib/data";
-import { db } from "@/lib/firebase";
+import { callUpdateTimezone } from "@/lib/data";
+import { db, realPushAvailable } from "@/lib/firebase";
+import { deviceToken, disablePushOnThisDevice, enablePushOnThisDevice, PushBlockedError, pushSupport, type PushSupport } from "@/lib/push";
 import { useProfile } from "@/lib/profile";
 import { applyTheme } from "@/lib/theme";
 import type { Profile, Theme } from "@/lib/types";
@@ -52,7 +54,7 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
 export function SettingsView() {
   const profile = useProfile();
   const toast = useToast();
-  const { state, logOut, sendPasswordReset } = useAuth();
+  const { state, logOut, sendPasswordReset, deleteAccount } = useAuth();
   const router = useRouter();
   const email = state.status === "signedIn" ? state.user.email : null;
   const userRef = doc(db, "users", profile.uid);
@@ -95,43 +97,11 @@ export function SettingsView() {
 
       <TimezoneSection timezone={profile.timezone} />
 
-      <Section title="Reminders">
-        <div className="flex items-center justify-between gap-3.5 py-1.5">
-          <div>
-            <div className="font-bold" id="reminder-label">
-              Evening reminder
-            </div>
-            <div className="text-sm text-muted">A nudge if a habit is still not done.</div>
-          </div>
-          <button
-            className="switch"
-            type="button"
-            role="switch"
-            aria-checked={profile.reminderEnabled}
-            aria-labelledby="reminder-label"
-            onClick={() => save({ reminderEnabled: !profile.reminderEnabled })}
-          />
-        </div>
-        {profile.reminderEnabled && (
-          <>
-            <label className="field-label" htmlFor="reminder-time">
-              Remind me at
-            </label>
-            <input
-              id="reminder-time"
-              className="input"
-              type="time"
-              defaultValue={profile.reminderTime}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (/^([01]\d|2[0-3]):[0-5]\d$/.test(value) && value !== profile.reminderTime) {
-                  save({ reminderTime: value }, `Reminder set for ${value}.`);
-                }
-              }}
-            />
-          </>
-        )}
-      </Section>
+      <RemindersSection
+        enabled={profile.reminderEnabled}
+        time={profile.reminderTime}
+        onSave={save}
+      />
 
       <Section title="Streak freeze">
         <div className="flex items-center justify-between gap-3.5 py-1.5">
@@ -154,9 +124,8 @@ export function SettingsView() {
           }
         }}
         onLogOut={() => logOut()}
-        onDelete={async () => {
-          await callDeleteAccount();
-          await logOut();
+        onDelete={async (password) => {
+          await deleteAccount(password);
           router.replace("/");
           toast("Account deleted.");
         }}
@@ -284,11 +253,32 @@ function AccountSection({
   email: string | null;
   onReset: () => void;
   onLogOut: () => void;
-  onDelete: () => Promise<void>;
+  onDelete: (password: string) => Promise<void>;
 }) {
-  const toast = useToast();
   const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  async function confirmDelete(e: FormEvent) {
+    e.preventDefault();
+    if (!password) return setError("Enter your password to confirm.");
+    setBusy(true);
+    setError(null);
+    try {
+      await onDelete(password);
+    } catch (err) {
+      setBusy(false);
+      const code = err instanceof FirebaseError ? err.code : "";
+      setError(
+        code === "auth/invalid-credential" || code === "auth/wrong-password"
+          ? "That password is not right."
+          : code === "auth/too-many-requests"
+            ? "Too many tries. Wait a minute and try again."
+            : "Could not delete your account. Try again.",
+      );
+    }
+  }
 
   return (
     <Section title="Account">
@@ -300,38 +290,195 @@ function AccountSection({
           Log out
         </button>
         {confirming ? (
-          <>
+          <form onSubmit={confirmDelete} noValidate>
             <p className="mt-2 font-medium" role="alert">
               Delete your account and every habit and check-in? This cannot be undone.
             </p>
-            <div className="flex gap-2.5">
-              <button className="btn btn-ghost flex-1" type="button" onClick={() => setConfirming(false)} disabled={busy}>
-                Keep my account
-              </button>
+            <label className="field-label" htmlFor="delete-password">
+              Enter your password to confirm
+            </label>
+            <input
+              id="delete-password"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "delete-password-error" : undefined}
+            />
+            {error && (
+              <div id="delete-password-error" className="err">
+                {error}
+              </div>
+            )}
+            <div className="mt-4 flex gap-2.5">
               <button
-                className="btn btn-danger flex-1"
+                className="btn btn-ghost flex-1"
                 type="button"
                 disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    await onDelete();
-                  } catch {
-                    setBusy(false);
-                    toast("Could not delete your account. Try again.");
-                  }
+                onClick={() => {
+                  setConfirming(false);
+                  setPassword("");
+                  setError(null);
                 }}
               >
+                Keep my account
+              </button>
+              <button className="btn btn-danger flex-1" type="submit" disabled={busy}>
                 {busy ? "Deleting…" : "Delete everything"}
               </button>
             </div>
-          </>
+          </form>
         ) : (
           <button className="btn btn-danger" type="button" onClick={() => setConfirming(true)}>
             Delete account
           </button>
         )}
       </div>
+    </Section>
+  );
+}
+
+const PUSH_MESSAGES = {
+  blocked:
+    "Notifications are blocked for Streaks in this browser. Allow them in your browser's site settings, then try again.",
+  dismissed: "Allow notifications when your browser asks, so we can send your reminder.",
+  unsupported:
+    "This browser cannot show notifications. On iPhone or iPad, add Streaks to your Home Screen first, then turn reminders on from there.",
+};
+
+/**
+ * The switch is the user-level setting. Turning it on asks for notification permission
+ * (only from that click) and registers this device; turning it off removes this
+ * device's token and stops reminders everywhere.
+ */
+function RemindersSection({
+  enabled,
+  time,
+  onSave,
+}: {
+  enabled: boolean;
+  time: string;
+  onSave: (fields: { reminderEnabled?: boolean; reminderTime?: string }, done?: string) => Promise<boolean>;
+}) {
+  const toast = useToast();
+  const [support, setSupport] = useState<PushSupport | null>(null);
+  const [onThisDevice, setOnThisDevice] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    pushSupport().then((s) => {
+      setSupport(s);
+      setOnThisDevice(!!deviceToken());
+    });
+  }, []);
+
+  // Must run straight from a click, so the browser allows the permission prompt.
+  async function addThisDevice(): Promise<boolean> {
+    if (support === "unsupported") {
+      setMessage(PUSH_MESSAGES.unsupported);
+      return false;
+    }
+    try {
+      await enablePushOnThisDevice();
+      setOnThisDevice(true);
+      setMessage(null);
+      return true;
+    } catch (err) {
+      if (err instanceof PushBlockedError) {
+        const blocked = err.message === "denied";
+        if (blocked) setSupport("blocked");
+        setMessage(blocked ? PUSH_MESSAGES.blocked : PUSH_MESSAGES.dismissed);
+      } else {
+        toast("Could not turn on reminders. Try again.");
+      }
+      return false;
+    }
+  }
+
+  async function toggle() {
+    setBusy(true);
+    if (!enabled) {
+      if ((await addThisDevice()) && (await onSave({ reminderEnabled: true }))) {
+        toast(`Reminders on. We will nudge you at ${time} if a habit is still not done.`);
+      }
+    } else {
+      await disablePushOnThisDevice();
+      setOnThisDevice(false);
+      if (await onSave({ reminderEnabled: false })) toast("Reminders off.");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Section title="Reminders">
+      <div className="flex items-center justify-between gap-3.5 py-1.5">
+        <div>
+          <div className="font-bold" id="reminder-label">
+            Evening reminder
+          </div>
+          <div className="text-sm text-muted">A nudge if a habit is still not done.</div>
+        </div>
+        <button
+          className="switch disabled:opacity-60"
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-labelledby="reminder-label"
+          aria-describedby={message ? "reminder-message" : undefined}
+          disabled={busy || support === null}
+          onClick={toggle}
+        />
+      </div>
+
+      {message && (
+        <p id="reminder-message" className="err text-sm!" role="alert">
+          {message}
+        </p>
+      )}
+
+      {enabled && (
+        <>
+          {!onThisDevice && support === "supported" && (
+            <button
+              className="link -ml-1.5"
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                if (await addThisDevice()) toast("This device will get reminders too.");
+                setBusy(false);
+              }}
+            >
+              Also remind me on this device
+            </button>
+          )}
+          <label className="field-label" htmlFor="reminder-time">
+            Remind me at
+          </label>
+          <input
+            id="reminder-time"
+            className="input"
+            type="time"
+            defaultValue={time}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (/^([01]\d|2[0-3]):[0-5]\d$/.test(value) && value !== time) {
+                onSave({ reminderTime: value }, `Reminder set for ${value}.`);
+              }
+            }}
+          />
+        </>
+      )}
+
+      {!realPushAvailable && (
+        <p className="mt-3 text-[13px] text-muted">
+          Local mode: push is not set up, so the emulator logs reminders instead of sending them.
+        </p>
+      )}
     </Section>
   );
 }

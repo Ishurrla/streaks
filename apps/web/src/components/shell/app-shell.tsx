@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { CalendarIcon, Flame, GearIcon, ListIcon, TodayIcon } from "@/components/icons";
+import { PushListener } from "./push-listener";
 
 const TABS = [
   { href: "/today", label: "Today", icon: TodayIcon },
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="desk:flex desk:min-h-dvh">
+      <PushListener />
       <main className="min-w-0 flex-1 px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] desk:px-10 desk:pt-9 desk:pb-12">
         <div className={`mx-auto max-w-[560px] ${narrow ? "desk:mx-0 desk:max-w-[720px]" : "desk:max-w-[1040px]"}`}>
           {children}

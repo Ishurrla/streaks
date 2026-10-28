@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { db } from "./admin";
+import { HttpsError } from "firebase-functions/v2/https";
+import { auth, db } from "./admin";
 import { NAME_MAX } from "./model";
 import { addDays } from "./streaks";
 import { DEFAULT_TIMEZONE, isValidTimezone, localDate, nextLocalMidnight } from "./time";
@@ -31,6 +32,10 @@ export async function ensureProfileFor(
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (snap.exists) return { created: false };
+
+    // An account being deleted is disabled first; never bring its profile back.
+    const user = await auth.getUser(uid).catch(() => null);
+    if (!user || user.disabled) throw new HttpsError("failed-precondition", "This account is closed.");
 
     const timezone = isValidTimezone(input.timezone) ? input.timezone : DEFAULT_TIMEZONE;
     tx.create(ref, {

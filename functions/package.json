@@ -11,7 +11,8 @@
     "test": "pnpm run build && firebase emulators:exec --project demo-streaks --only auth,firestore,functions \"vitest run\"",
     "test:unit": "vitest run test/unit --config vitest.unit.config.ts",
     "rollover:dev": "pnpm run build && node scripts/run-rollover.mjs",
-    "seed:dev": "pnpm run build && node scripts/seed-dev.mjs"
+    "seed:dev": "pnpm run build && node scripts/seed-dev.mjs",
+    "reminders:dev": "pnpm run build && node scripts/run-reminders.mjs"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",

@@ -8,7 +8,7 @@
       "source": "functions",
       "codebase": "default",
       "runtime": "nodejs22",
-      "ignore": ["node_modules", ".git", "test", "*.log", "src"],
+      "ignore": ["node_modules", ".git", "test", "scripts", "*.log", "src", ".env.demo-streaks"],
       "predeploy": ["pnpm --dir functions run build"]
     }
   ],

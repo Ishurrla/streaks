@@ -3,6 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -12,6 +14,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { auth, functions } from "./firebase";
+import { disablePushOnThisDevice } from "./push";
 
 export type AuthState =
   | { status: "loading" }
@@ -24,6 +27,8 @@ interface AuthApi {
   logIn(email: string, password: string): Promise<void>;
   logOut(): Promise<void>;
   sendPasswordReset(email: string): Promise<void>;
+  /** Confirms the password, then deletes the account and everything in it. */
+  deleteAccount(password: string): Promise<void>;
 }
 
 const AuthContext = createContext<AuthApi | null>(null);
@@ -39,6 +44,9 @@ function browserTimezone(): string | undefined {
 // The name typed on the sign-up form, used when the profile is first created.
 let pendingName: string | null = null;
 let inflight: { uid: string; promise: Promise<unknown> } | null = null;
+// Set while an account is being deleted, so the profile listener does not "repair" the
+// profile it sees disappear. The server refuses that too; this just avoids the call.
+let deletingAccount = false;
 
 /**
  * Calls the ensureProfile function. It is safe to call often (the server makes it a
@@ -46,6 +54,7 @@ let inflight: { uid: string; promise: Promise<unknown> } | null = null;
  * request, so the sign-up name cannot be lost to a racing call without it.
  */
 export function ensureProfile(uid: string): Promise<unknown> {
+  if (deletingAccount) return Promise.resolve();
   if (inflight?.uid === uid) return inflight.promise;
   const call = httpsCallable(functions, "ensureProfile");
   const promise = call({ name: pendingName ?? undefined, timezone: browserTimezone() }).finally(() => {
@@ -91,12 +100,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await ensureProfile(user.uid).catch(() => undefined);
       },
       async logOut() {
+        // Stop reminders reaching this device for whoever signs in next. Needs auth, so first.
+        await disablePushOnThisDevice();
         explicitSignOut.current = true;
         await signOut(auth);
         queryClient.clear();
       },
       sendPasswordReset(email) {
         return sendPasswordResetEmail(auth, email.trim());
+      },
+      async deleteAccount(password) {
+        const user = auth.currentUser;
+        if (!user?.email) throw new Error("Not signed in");
+        // The server only deletes after a recent sign-in, so confirm the password and
+        // force a fresh ID token carrying the new sign-in time.
+        await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+        await user.getIdToken(true);
+        await disablePushOnThisDevice();
+        deletingAccount = true;
+        try {
+          await httpsCallable(functions, "deleteAccount")();
+          explicitSignOut.current = true;
+          await signOut(auth);
+          queryClient.clear();
+        } finally {
+          deletingAccount = false;
+        }
       },
     }),
     [state, queryClient],

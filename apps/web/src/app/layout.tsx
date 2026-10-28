@@ -18,6 +18,8 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: { default: "Streaks: small habits, one streak at a time", template: "%s · Streaks" },
   description: "Check off the few things you want to do every day. Miss a day and the streak starts over.",
+  appleWebApp: { capable: true, title: "Streaks", statusBarStyle: "default" },
+  icons: { apple: "/icons/icon-192.png" },
 };
 
 export const viewport: Viewport = {

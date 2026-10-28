@@ -224,6 +224,18 @@ describe("checkIns and freezeUses", () => {
   });
 });
 
+describe("pushTokens", () => {
+  it("cannot be read or written by the client, even by its owner", async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore() as unknown as Firestore, "users", ALICE, "pushTokens", "t1"), { token: "abc" }),
+    );
+    await assertFails(getDoc(doc(alice(), "users", ALICE, "pushTokens", "t1")));
+    await assertFails(setDoc(doc(alice(), "users", ALICE, "pushTokens", "t2"), { token: "def" }));
+    await assertFails(deleteDoc(doc(alice(), "users", ALICE, "pushTokens", "t1")));
+    await assertFails(setDoc(doc(bob(), "users", ALICE, "pushTokens", "t3"), { token: "ghi" }));
+  });
+});
+
 describe("default deny", () => {
   it("blocks collections outside users/{uid}", async () => {
     await assertFails(getDoc(doc(alice(), "admin", "config")));
