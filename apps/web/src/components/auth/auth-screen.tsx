@@ -7,6 +7,7 @@ import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { Flame } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { useAuth } from "@/lib/auth";
+import { devWithEmulators, EMULATOR_PORTS, emulatorHost } from "@/lib/firebase";
 import {
   authErrorFromCode,
   isEmail,
@@ -123,7 +124,11 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
         toast("Welcome back.");
       }
     } catch (err) {
-      const mapped = authErrorFromCode(err instanceof FirebaseError ? err.code : undefined);
+      const code = err instanceof FirebaseError ? err.code : undefined;
+      const mapped =
+        devWithEmulators && code === "auth/network-request-failed"
+          ? { form: `Could not reach the Auth emulator at ${emulatorHost}:${EMULATOR_PORTS.auth}. Start it with pnpm dev.` }
+          : authErrorFromCode(code);
       setErrors(mapped);
       focusFirstError(mapped);
       setBusy(false);

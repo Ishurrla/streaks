@@ -10,21 +10,38 @@ A habit tracker where streaks are computed and enforced on the server (Firebase)
 
 ## Requirements
 
-Node 22+, pnpm, Java 21+ (for the Firestore emulator), and the Firebase CLI (`npm i -g firebase-tools`).
+Node 22+, pnpm and Java 21+ (for the Firestore emulator). The Firebase CLI is a dev dependency, so
+`pnpm install` brings the right version. A global `firebase` is only needed for deploying.
 
-## Local development
-
-Everything runs against the Emulator Suite using the `demo-streaks` project ID. A `demo-` project
-cannot reach any live Firebase resources, so nothing here touches a real project.
+## Running locally
 
 ```sh
 pnpm install
-pnpm emulators          # builds functions, then starts Auth, Firestore, Functions and the UI at http://127.0.0.1:4000
-pnpm dev:web            # in a second terminal: the app at http://localhost:3000
+pnpm dev
 ```
 
-With no `NEXT_PUBLIC_FIREBASE_*` variables set, the web app connects to the emulators. See
-`apps/web/.env.example`.
+`pnpm dev` builds the functions, then starts the Auth, Firestore and Functions emulators (with the
+Emulator UI at http://127.0.0.1:4000) and the app at http://localhost:3000, in one terminal. Press
+Ctrl+C once to stop both: the emulators save their data to `.emulator-data/` first and load it on the
+next start, so your test users and habits survive restarts. Press Ctrl+C twice to stop without saving.
+Delete `.emulator-data/` to start from empty.
+
+Everything runs under the `demo-streaks` project ID. A `demo-` project cannot reach any live Firebase
+resources, so nothing here touches a real project. With no `NEXT_PUBLIC_FIREBASE_*` variables (there
+is no `.env.local` by default) the app uses that project and the emulators. See `apps/web/.env.example`.
+
+In development the app checks the emulators and shows a banner when one is not running, or when the
+Functions emulator is up but loaded no functions. If sign-up fails:
+
+- "Could not reach the Auth emulator": the emulators are not running. Use `pnpm dev`, not `pnpm dev:web`.
+- "We could not load your account" with `functions/internal`: the Functions emulator has no functions.
+  Look for "Failed to load function definition" in its output and restart. `pnpm dev`, `pnpm emulators`
+  and the tests allow the functions 60 seconds to load (`FUNCTIONS_DISCOVERY_TIMEOUT`); the Firebase
+  CLI's default of 10 seconds is sometimes too short on Windows.
+- Something else already using a port (9099, 8080, 5001, 4000 or 3000): stop it, or an old
+  `pnpm dev:web`, and run `pnpm dev` again.
+
+To run the two halves separately: `pnpm emulators` (no saved data) and `pnpm dev:web`.
 
 The Functions emulator does not fire scheduled functions. To run the nightly rollover or the
 reminders job by hand while the emulators are up (optionally with a fake clock):
@@ -49,7 +66,7 @@ If the dev server ever serves stale CSS after edits, stop it and delete `apps/we
 
 Run everything from the repo root. You do not need to start the emulators first:
 `firebase emulators:exec` starts Auth, Firestore and Functions, runs the tests, then shuts them down.
-Stop `pnpm emulators` before running it, or the ports clash.
+Stop `pnpm dev` (or `pnpm emulators`) before running it, or the ports clash.
 
 ```sh
 pnpm test        # everything: builds functions, runs all backend tests under the emulators, then the web tests
@@ -77,14 +94,15 @@ pnpm --filter web test              # web unit tests
 # A single backend file under the emulators (run from functions/):
 cd functions
 pnpm run build
-firebase emulators:exec --project demo-streaks --only auth,firestore,functions "npx vitest run test/rules.test.ts"
+node ../scripts/firebase.mjs emulators:exec --project demo-streaks --only auth,firestore,functions "npx vitest run test/rules.test.ts"
 ```
 
 Swap in `test/rollover.test.ts`, `test/reminders.test.ts` and so on. Add `-t "part of a test name"`
 after the file to run one test.
 
 Faster loop while working: keep `pnpm emulators` running in one terminal and run vitest directly in
-another. The tests refuse to run without the emulator variables, so they can never touch a real project:
+another. Not `pnpm dev`: the tests empty the Firestore emulator, which would wipe your saved dev data.
+The tests refuse to run without the emulator variables, so they can never touch a real project:
 
 ```sh
 # bash

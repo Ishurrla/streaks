@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { Flame } from "@/components/icons";
 import { useAuth } from "@/lib/auth";
+import { devWithEmulators } from "@/lib/firebase";
 import { ProfileProvider, useProfileDoc } from "@/lib/profile";
 
 function Splash({ label }: { label: string }) {
@@ -50,6 +51,10 @@ function ProfileGate({ uid, children }: { uid: string; children: ReactNode }) {
         <div className="max-w-sm rounded-[22px] bg-surface p-6 text-center shadow-card" role="alert">
           <h1 className="mb-2 text-2xl font-extrabold">We could not load your account</h1>
           <p className="mb-5 text-muted">Check your connection and try again.</p>
+          {devWithEmulators ? (
+            // Development only: the real error, e.g. functions/internal when no functions loaded.
+            <p className="-mt-3 mb-5 font-mono text-xs text-muted">{(error as { code?: string }).code ?? error.message}</p>
+          ) : null}
           <div className="flex gap-2.5">
             <button className="btn btn-ghost flex-1" type="button" onClick={() => logOut()}>
               Log out

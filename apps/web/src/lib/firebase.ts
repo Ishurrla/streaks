@@ -34,20 +34,28 @@ export const realPushAvailable = !!(apiKey && webConfig.messagingSenderId && web
  */
 export const usingEmulators = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" || !apiKey;
 
-// With real config plus NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true, Auth, Firestore and Functions
-// use the emulators while push still registers with the real project's FCM.
-const config: FirebaseOptions = usingEmulators && !apiKey
+/** Development against the emulators: the app checks they are up and explains when they are not. */
+export const devWithEmulators = process.env.NODE_ENV === "development" && usingEmulators;
+
+export const emulatorHost = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
+
+// Must match the ports in firebase.json.
+export const EMULATOR_PORTS = { auth: 9099, firestore: 8080, functions: 5001 } as const;
+
+// On the emulators the app always uses the demo-streaks project, even when real config is
+// set: the emulators run as demo-streaks (callable URLs include the project ID), and a demo
+// project cannot reach live resources.
+const config: FirebaseOptions = usingEmulators
   ? { apiKey: "demo-key", projectId: "demo-streaks", authDomain: "demo-streaks.firebaseapp.com" }
   : webConfig;
 
 function init() {
-  if (getApps().length) return getApp();
+  if (getApps().some((a) => a.name === "[DEFAULT]")) return getApp();
   const app = initializeApp(config);
   if (usingEmulators) {
-    const host = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
-    connectAuthEmulator(getAuth(app), `http://${host}:9099`, { disableWarnings: true });
-    connectFirestoreEmulator(getFirestore(app), host, 8080);
-    connectFunctionsEmulator(getFunctions(app, FUNCTIONS_REGION), host, 5001);
+    connectAuthEmulator(getAuth(app), `http://${emulatorHost}:${EMULATOR_PORTS.auth}`, { disableWarnings: true });
+    connectFirestoreEmulator(getFirestore(app), emulatorHost, EMULATOR_PORTS.firestore);
+    connectFunctionsEmulator(getFunctions(app, FUNCTIONS_REGION), emulatorHost, EMULATOR_PORTS.functions);
   }
   return app;
 }
@@ -56,3 +64,13 @@ export const app = init();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, FUNCTIONS_REGION);
+
+/**
+ * The app push registers with. With real config plus NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true,
+ * everything else stays on the emulators while push uses the real project's FCM, through a
+ * second app that only messaging uses.
+ */
+export const pushApp =
+  usingEmulators && realPushAvailable
+    ? (getApps().find((a) => a.name === "push") ?? initializeApp(webConfig, "push"))
+    : app;

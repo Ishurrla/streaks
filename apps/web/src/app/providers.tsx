@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { EmulatorBanner } from "@/components/dev/emulator-banner";
 import { ToastProvider } from "@/components/toast";
 import { AuthProvider } from "@/lib/auth";
 
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={getQueryClient()}>
       <ToastProvider>
         <AuthProvider>{children}</AuthProvider>
+        <EmulatorBanner />
       </ToastProvider>
     </QueryClientProvider>
   );

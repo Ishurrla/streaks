@@ -25,7 +25,15 @@ firebase login
 firebase use --add            # choose <project-id>, alias it "prod"
 ```
 
-`demo-streaks` stays the default for local work, so deploys must name `--project prod`.
+Then make it the default in `.firebaserc` (this repo's is set up for `streaks-b1dca`):
+
+```json
+{ "projects": { "default": "<project-id>", "prod": "<project-id>", "demo": "demo-streaks" } }
+```
+
+Local work is unaffected: `pnpm dev`, `pnpm emulators`, the tests and the `*:dev` scripts all name
+`demo-streaks` themselves. The commands below still say `--project prod`, so a deploy never depends on
+which project happens to be the default.
 
 ## 4. Function parameters
 

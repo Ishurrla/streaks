@@ -2,7 +2,7 @@
 
 import { httpsCallable } from "firebase/functions";
 import { deleteToken, getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
-import { app, functions, realPushAvailable, vapidKey, webConfig } from "./firebase";
+import { functions, pushApp, realPushAvailable, vapidKey, webConfig } from "./firebase";
 
 // The token this browser registered, so it can be removed on log out or switch-off.
 const STORAGE_KEY = "streaks-push-token";
@@ -63,7 +63,7 @@ export async function enablePushOnThisDevice(): Promise<void> {
   let token: string;
   if (realPushAvailable) {
     const registration = await registerWorker();
-    token = await getToken(getMessaging(app), { vapidKey, serviceWorkerRegistration: registration });
+    token = await getToken(getMessaging(pushApp), { vapidKey, serviceWorkerRegistration: registration });
   } else {
     // Emulator mode: FCM is not emulated, so register a stand-in token. The emulated
     // reminders job logs what it would send instead of sending.
@@ -80,7 +80,7 @@ export async function disablePushOnThisDevice(): Promise<void> {
   if (!token) return;
   try {
     await httpsCallable(functions, "removePushToken")({ token });
-    if (realPushAvailable) await deleteToken(getMessaging(app));
+    if (realPushAvailable) await deleteToken(getMessaging(pushApp));
   } catch {
     // The server drops tokens FCM reports as dead, so a leftover is cleaned up later.
   } finally {
@@ -92,7 +92,7 @@ export async function disablePushOnThisDevice(): Promise<void> {
 export async function listenForForegroundMessages(show: (body: string) => void): Promise<() => void> {
   if (!realPushAvailable || !(await isSupported().catch(() => false))) return () => {};
   if (Notification.permission !== "granted") return () => {};
-  return onMessage(getMessaging(app), (payload) => {
+  return onMessage(getMessaging(pushApp), (payload) => {
     const body = payload.notification?.body;
     if (body) show(body);
   });

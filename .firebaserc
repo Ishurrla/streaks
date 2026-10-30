@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "demo-streaks"
+    "default": "streaks-b1dca",
+    "prod": "streaks-b1dca",
+    "demo": "demo-streaks"
   }
 }
