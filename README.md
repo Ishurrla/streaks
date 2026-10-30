@@ -47,10 +47,63 @@ If the dev server ever serves stale CSS after edits, stop it and delete `apps/we
 
 ## Tests
 
+Run everything from the repo root. You do not need to start the emulators first:
+`firebase emulators:exec` starts Auth, Firestore and Functions, runs the tests, then shuts them down.
+Stop `pnpm emulators` before running it, or the ports clash.
+
 ```sh
-pnpm test                         # backend tests inside `firebase emulators:exec`, then web unit tests
-pnpm --filter functions test:unit # pure unit tests only, no emulators
+pnpm test        # everything: builds functions, runs all backend tests under the emulators, then the web tests
 ```
+
+| Area | File | Needs emulators |
+| --- | --- | --- |
+| Streak logic (`computeStreaks`) | `functions/test/unit/streaks.test.ts` | no |
+| Local dates and timezones | `functions/test/unit/time.test.ts` | no |
+| Firestore security rules | `functions/test/rules.test.ts` | yes |
+| Check-ins and undo | `functions/test/checkins.test.ts` | yes |
+| Profile creation | `functions/test/ensureProfile.test.ts` | yes |
+| Rollover, freezes, timezone changes | `functions/test/rollover.test.ts` | yes |
+| Reminders (fake push sender) | `functions/test/reminders.test.ts` | yes |
+| Push tokens and account deletion | `functions/test/account.test.ts` | yes |
+| Web date and form helpers | `apps/web/src/lib/*.test.ts` | no |
+
+One part at a time:
+
+```sh
+pnpm --filter functions test:unit   # streak logic and time, no emulators, under a second
+pnpm --filter functions test        # all backend tests, under the emulators
+pnpm --filter web test              # web unit tests
+
+# A single backend file under the emulators (run from functions/):
+cd functions
+pnpm run build
+firebase emulators:exec --project demo-streaks --only auth,firestore,functions "npx vitest run test/rules.test.ts"
+```
+
+Swap in `test/rollover.test.ts`, `test/reminders.test.ts` and so on. Add `-t "part of a test name"`
+after the file to run one test.
+
+Faster loop while working: keep `pnpm emulators` running in one terminal and run vitest directly in
+another. The tests refuse to run without the emulator variables, so they can never touch a real project:
+
+```sh
+# bash
+cd functions
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 npx vitest run test/rules.test.ts
+```
+
+```powershell
+# PowerShell
+cd functions
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"; $env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099"
+npx vitest run test/rules.test.ts
+```
+
+The Functions emulator only reloads after `pnpm --filter functions build`, so rebuild after changing
+code in `functions/src`.
+
+If a run fails with "User code failed to load ... Timeout after 10000" or "No test files found",
+the emulator started too slowly (usually a busy or just-woken machine). Run it again.
 
 ## Testing notifications
 
