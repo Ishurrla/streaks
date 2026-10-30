@@ -1,91 +1,189 @@
-# Deploying Streaks
+# Deploying Streaks (Spark plan)
 
-Firebase runs the backend (Auth, Firestore, Cloud Functions, Cloud Messaging) and Vercel hosts the Next.js app. Do the steps in order. `<project-id>` is your Firebase project ID and `<app-url>` is your Vercel URL, for example `https://streaks.vercel.app`.
+Firebase (free Spark plan) provides Auth, Firestore and Cloud Messaging. Vercel hosts the Next.js
+app and its `/api` routes, which hold all the server logic. GitHub Actions calls the two cron
+endpoints every 15 minutes. Nothing here needs Cloud Functions, Cloud Scheduler or billing.
 
-## 1. Firebase project and billing
+Do the steps in order and check each one before moving on. The project is `streaks-b1dca`, aliased
+`prod` in `.firebaserc`. Run commands from the repo root. `pnpm exec firebase` uses the CLI version
+pinned in this repo; sign it in once with `pnpm exec firebase login`.
 
-1. Create a project at https://console.firebase.google.com. Google Analytics is not needed.
-2. Upgrade to the **Blaze** plan (Usage and billing > Modify plan). Scheduled functions need it.
-3. Add a **budget alert**: Google Cloud console > Billing > Budgets & alerts > Create budget. Pick the project, set a small amount (for example 5 USD), and keep the 50%, 90% and 100% email alerts. A budget only alerts, it does not cap spending.
+## 1. Create the Firestore database in europe-west3 (Frankfurt), before anything else
 
-Expected cost at small scale is close to zero. The two scheduled jobs use 2 of the 3 free Cloud Scheduler jobs per billing account, and each runs 96 times a day.
+The location cannot be changed later, and it matches the Vercel region (`fra1` in `apps/web/vercel.json`).
 
-## 2. Turn on the services
+1. Firebase console > Build > **Firestore Database** > Create database.
+2. If asked for an edition, pick **Standard**. Location: **europe-west3 (Frankfurt)**.
+3. Start in **production mode** (deny all). Step 2 replaces those rules.
 
-1. **Authentication** > Get started > Sign-in method > enable **Email/Password**.
-   - Optional: Settings > Password policy > minimum length 8, so the server enforces the same rule as the app.
-2. **Firestore Database** > Create database > **production mode**. Pick a location near the functions region (`europe-west1`), for example `eur3` or `europe-west1`. You cannot change the location later.
-3. **Register a web app**: Project settings > General > Your apps > Web (`</>`). Skip Firebase Hosting. Keep the config values for step 5.
-4. **Cloud Messaging VAPID key**: Project settings > Cloud Messaging > Web Push certificates > **Generate key pair**. Copy the public key.
-
-## 3. Point the CLI at the project
+**Check:**
 
 ```sh
-firebase login
-firebase use --add            # choose <project-id>, alias it "prod"
+pnpm exec firebase firestore:databases:get "(default)" --project prod
 ```
 
-Then make it the default in `.firebaserc` (this repo's is set up for `streaks-b1dca`):
+The table shows `Location` as `europe-west3`. In the console the Data tab is empty.
 
-```json
-{ "projects": { "default": "<project-id>", "prod": "<project-id>", "demo": "demo-streaks" } }
+## 2. Deploy the rules and indexes
+
+```sh
+pnpm exec firebase deploy --only firestore:rules,firestore:indexes --project prod
 ```
 
-Local work is unaffected: `pnpm dev`, `pnpm emulators`, the tests and the `*:dev` scripts all name
-`demo-streaks` themselves. The commands below still say `--project prod`, so a deploy never depends on
-which project happens to be the default.
+It ends with "Deploy complete!" after "rules file firestore.rules compiled successfully" and
+"released rules". If it asks to delete indexes that are not in the file, answer **No** (a new
+database has none).
 
-## 4. Function parameters
+**Check:**
+- Firestore Database > **Rules**: starts with `rules_version = '2';` and the comment "Everything is
+  denied unless a rule below allows it", published a minute ago.
+- Firestore Database > **Indexes** > the single-field (exemptions) tab: one override on collection
+  `pushTokens`, field `token`, ascending, for "Collection" and "Collection group". It may say
+  "Building" for a few minutes before "Enabled". The composite tab stays empty.
+- Optional: Rules > **Rules Playground**, simulate an unauthenticated `get` on `/users/test`: denied.
 
-Create `functions/.env.<project-id>` (it is git-ignored) containing:
+## 3. Create the service account key and split it into three values
 
-```
-APP_URL=<app-url>
-```
+The server uses the Firebase Admin SDK with this key. It is a real secret: it never goes in git, in a
+`NEXT_PUBLIC_` variable, or anywhere in the browser.
 
-This is where a reminder notification opens when tapped. It is not a secret. No service account keys are needed: deployed functions use the project's default service account.
+1. Firebase console > Project settings > **Service accounts** > Firebase Admin SDK >
+   **Generate new private key**. A JSON file downloads. (You rotated a key earlier and keep it in
+   `apps/web/.env.local` as `FIREBASE_SERVICE_ACCOUNT`; you can take the three fields from that JSON
+   instead of generating another.)
+2. From the JSON, keep three fields for step 4:
 
-## 5. Vercel
-
-1. Import the Git repository in Vercel and set **Root Directory** to `apps/web`. Vercel detects Next.js and pnpm.
-2. Add these environment variables (Production and Preview). They are public client config, not secrets:
-
-   | Variable | Value |
+   | JSON field | Vercel variable |
    | --- | --- |
-   | `NEXT_PUBLIC_FIREBASE_API_KEY` | `apiKey` from step 2.3 |
-   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `authDomain` |
-   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `projectId` |
-   | `NEXT_PUBLIC_FIREBASE_APP_ID` | `appId` |
-   | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` |
-   | `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | public key from step 2.4 |
+   | `project_id` | `FIREBASE_PROJECT_ID` |
+   | `client_email` | `FIREBASE_CLIENT_EMAIL` |
+   | `private_key` | `FIREBASE_PRIVATE_KEY` |
 
-   Do not set `NEXT_PUBLIC_FIREBASE_USE_EMULATORS` in Vercel.
-3. Deploy. If the final URL differs from what you put in `APP_URL`, update the env file and redeploy the functions (step 6).
-4. In Firebase: Authentication > Settings > **Authorized domains** > add your Vercel domain.
+   For `private_key`, copy everything from `-----BEGIN PRIVATE KEY-----` to
+   `-----END PRIVATE KEY-----\n`, without the surrounding quotes. Leave the `\n` sequences as they are;
+   the server turns them back into newlines.
+3. Delete the downloaded file once the values are in Vercel. Local development does not use the key
+   at all, so you can also remove `FIREBASE_SERVICE_ACCOUNT` from `apps/web/.env.local`.
 
-## 6. Deploy the backend
+**Check:** Google Cloud console > IAM & Admin > **Service accounts** >
+`firebase-adminsdk-…@streaks-b1dca.iam.gserviceaccount.com` > **Keys**: only the keys you mean to
+have are active (the old one you deleted is gone). `client_email` ends in `@streaks-b1dca.iam.gserviceaccount.com`
+and `project_id` is `streaks-b1dca`.
 
-From the repo root:
+## 4. Set the env vars on Vercel and the GitHub secrets
+
+**4a. Push the repo to GitHub.** Create an empty private repository on GitHub, then:
 
 ```sh
-pnpm install
-pnpm test                                                        # all green before deploying
-firebase deploy --only firestore:rules,firestore:indexes --project prod
-firebase deploy --only functions --project prod
+git remote add origin https://github.com/<you>/streaks.git
+git push -u origin master
 ```
 
-The first functions deploy turns on the Cloud Functions, Cloud Build, Artifact Registry, Cloud Scheduler, Eventarc and Pub/Sub APIs, which can take a few minutes. If it fails while an API is still being enabled, run it again. The `predeploy` hook builds the TypeScript first.
+GitHub starts the cron schedule as soon as `.github/workflows/cron.yml` is on the default branch,
+and it would fail until the app is deployed. So straight away: GitHub > **Actions** > **cron** >
+"…" menu > **Disable workflow**. Step 7 turns it back on.
 
-Later updates use the same two commands. Use `firebase deploy --project prod` to deploy everything at once.
+**4b. Make a cron secret.** Any long random string; for example:
 
-## 7. Check it works
+```sh
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-1. Sign up on `<app-url>`, add a habit and check it off.
-2. Firestore console: `users/{uid}/habits/{id}/checkIns/<today>` exists.
-3. Google Cloud console > Cloud Scheduler: two jobs (`firebase-schedule-rollover-…` and `firebase-schedule-reminders-…`) run every 15 minutes. **Force run** triggers one straight away. Logs are under Functions > Logs.
-4. Push: see "Testing notifications" in the README.
+Use a different value from the `CRON_SECRET` in your local `.env.local`.
 
-## Optional hardening
+**4c. Create the Vercel project, without deploying yet.** Vercel > Add New > Project > import the
+repository.
+- **Root Directory**: `apps/web`. Vercel detects Next.js and the pnpm workspace, and reads
+  `apps/web/vercel.json` (functions run in `fra1`, Frankfurt).
+- The project name decides the domain: `<project-name>.vercel.app`, for example
+  `https://streaks.vercel.app`. That is your `APP_URL` below.
+- Open **Environment Variables** on the import screen and add these for **Production**. Do not press
+  Deploy yet.
 
-- Restrict the browser API key (Google Cloud console > APIs & Services > Credentials) to HTTP referrers on your Vercel domain and `localhost`.
-- Turn on Firebase App Check for Firestore and Functions.
+| Variable | Value | Sensitive |
+| --- | --- | --- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | web config `apiKey` | |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `streaks-b1dca.firebaseapp.com` | |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `streaks-b1dca` | |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | web config `appId` | |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | web config `messagingSenderId` | |
+| `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | Cloud Messaging > Web Push certificates, public key | |
+| `FIREBASE_PROJECT_ID` | from step 3 | |
+| `FIREBASE_CLIENT_EMAIL` | from step 3 | |
+| `FIREBASE_PRIVATE_KEY` | from step 3 | yes |
+| `CRON_SECRET` | from 4b | yes |
+| `APP_URL` | `https://<project-name>.vercel.app`, no trailing slash | |
+
+The six `NEXT_PUBLIC_*` values are the ones in your `apps/web/.env.local`, or print them with
+`pnpm exec firebase apps:sdkconfig WEB --project prod`. Do **not** add
+`NEXT_PUBLIC_FIREBASE_USE_EMULATORS` or any `*_EMULATOR_HOST`: the server refuses to start on Vercel
+in emulator mode. Leave Preview empty unless you want preview deployments to use the real project;
+without these values a preview refuses to start rather than misbehave.
+
+**4d. GitHub secrets.** GitHub > Settings > Secrets and variables > **Actions** > New repository secret:
+- `APP_URL`: the same value as in Vercel.
+- `CRON_SECRET`: the same value as in Vercel.
+
+**Check:**
+- Vercel lists the 11 variables, all for Production, none of the emulator ones.
+- GitHub > Settings > Secrets and variables > Actions lists `APP_URL` and `CRON_SECRET`.
+- GitHub > Actions shows the **cron** workflow, marked disabled.
+- `git ls-files | grep -i env` shows only `apps/web/.env.example`.
+
+## 5. Add the Vercel domain to Firebase Auth
+
+1. Firebase console > Build > **Authentication** > Settings > **Authorized domains** > Add domain:
+   `<project-name>.vercel.app` (no `https://`). Add your custom domain too if you have one.
+2. Same page, **Sign-in method**: make sure **Email/Password** is enabled.
+
+**Check:** the list holds `localhost`, `streaks-b1dca.firebaseapp.com`, `streaks-b1dca.web.app` and
+your Vercel domain; Sign-in method shows Email/Password as Enabled.
+
+## 6. First deploy
+
+Press **Deploy** on the Vercel import screen (later deploys happen on every push to `master`).
+
+**Check:**
+- The build log ends with "Compiled successfully" and lists the routes, including eleven dynamic
+  (`ƒ`) ones under `/api/`.
+- Settings > Domains shows the domain you expected. If Vercel picked a different one, update
+  `APP_URL` in Vercel and in GitHub, add it to the authorized domains (step 5), then Redeploy.
+- Open the site and sign up. Today greets you by name. In the browser's network tab,
+  `POST /api/ensure-profile` returned 200.
+- Firestore > Data: `users/{uid}` exists with `timezone`, `nextRolloverAt`, `lastClosedDate` and
+  `nextReminderAt: null`.
+- Add a habit and check it off: `POST /api/check-in` returns 200, and
+  `users/{uid}/habits/{id}/checkIns/<today>` exists.
+- Vercel > Logs: no errors. In particular none saying "Refusing to use the Firebase emulators" or
+  "… is not set" (a missing or misspelled variable; fix it and Redeploy, since env changes only apply
+  to new deployments).
+- The routes refuse strangers (both should print `401`):
+
+  ```sh
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<project-name>.vercel.app/api/check-in
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<project-name>.vercel.app/api/cron/rollover
+  ```
+
+## 7. Run the cron workflow by hand
+
+GitHub > **Actions** > **cron** > **Enable workflow**, then **Run workflow** (branch `master`).
+
+**Check:**
+- Both steps are green. The Rollover step prints `{"ok":true,"rolledOver":…,"done":true}` and the
+  Reminders step `{"ok":true,"sent":…,"done":true}`.
+- Firestore > Data: `cron/rollover` and `cron/reminders` exist, with `lastSuccessfulRun` a minute ago
+  and `lastResult` matching the output.
+- Over the next hour scheduled runs appear in the Actions tab (GitHub often starts them late) and
+  `lastSuccessfulRun` keeps moving.
+- A step that fails with `401` means `CRON_SECRET` differs between GitHub and Vercel (after changing
+  it in Vercel, Redeploy). A `404` or connection error means `APP_URL` is wrong.
+
+## After deploying
+
+- Try a real reminder on a phone: README > "Testing notifications", level 3.
+- Watch the cron: README > "Cron" explains `lastSuccessfulRun`. GitHub turns scheduled workflows off
+  after 60 days without repo activity; re-enable it in the Actions tab if that happens.
+- Spark quotas are 50,000 document reads and 20,000 writes a day (Firebase console > Usage). The
+  cron reads only users who are due, and records 2 small documents per run (about 200 writes a day).
+- Optional hardening: restrict the browser API key to your domains (Google Cloud console > APIs &
+  Services > Credentials), and turn on Firebase App Check.

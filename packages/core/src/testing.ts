@@ -1,7 +1,7 @@
 // Test helpers for code that runs against the Auth and Firestore emulators. Imported
 // only by tests (as "@streaks/core/testing"), never by the app.
 import { Timestamp } from "firebase-admin/firestore";
-import { DEMO_PROJECT_ID, db } from "./admin";
+import { db, emulatorProjectId } from "./admin";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -20,7 +20,7 @@ export function adminDb() {
 
 export async function clearFirestore(): Promise<void> {
   const host = requireEnv("FIRESTORE_EMULATOR_HOST");
-  const res = await fetch(`http://${host}/emulator/v1/projects/${DEMO_PROJECT_ID}/databases/(default)/documents`, {
+  const res = await fetch(`http://${host}/emulator/v1/projects/${emulatorProjectId()}/databases/(default)/documents`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`Failed to clear Firestore emulator: ${res.status}`);
@@ -104,7 +104,7 @@ export function withClaims(idToken: string, claims: Record<string, unknown>): st
  */
 export async function setTokensValidSince(uid: string, seconds: number): Promise<void> {
   const host = requireEnv("FIREBASE_AUTH_EMULATOR_HOST");
-  const res = await fetch(`http://${host}/identitytoolkit.googleapis.com/v1/projects/${DEMO_PROJECT_ID}/accounts:update`, {
+  const res = await fetch(`http://${host}/identitytoolkit.googleapis.com/v1/projects/${emulatorProjectId()}/accounts:update`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: "Bearer owner" },
     body: JSON.stringify({ localId: uid, validSince: String(seconds) }),

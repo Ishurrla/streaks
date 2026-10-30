@@ -1,7 +1,7 @@
 rules_version = '2';
 
-// Everything is denied unless a rule below allows it. Server code (Cloud Functions,
-// Admin SDK) bypasses these rules, which is how server-owned fields get written.
+// Everything is denied unless a rule below allows it. Server code (the Next.js /api routes,
+// using the Admin SDK) bypasses these rules, which is how server-owned fields get written.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -44,7 +44,7 @@ service cloud.firestore {
         && (!('theme' in changedKeys()) || request.resource.data.theme in ['light', 'dark', 'system']);
 
       // Device tokens for push reminders. Saved and removed only through the
-      // registerPushToken / removePushToken callables; the app never reads them.
+      // /api/register-push-token and /api/remove-push-token routes; the app never reads them.
       match /pushTokens/{tokenId} {
         allow read, write: if false;
       }

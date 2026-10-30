@@ -39,7 +39,7 @@ export const emulatorHost = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1"
 export const EMULATOR_PORTS = { auth: 9099, firestore: 8080 } as const;
 
 // On the emulators the app always uses the demo-streaks project, even when real config is
-// set: the emulators run as demo-streaks (callable URLs include the project ID), and a demo
+// set: the emulators run as demo-streaks (ID tokens are checked against the project ID), and a demo
 // project cannot reach live resources.
 const config: FirebaseOptions = usingEmulators
   ? { apiKey: "demo-key", projectId: "demo-streaks", authDomain: "demo-streaks.firebaseapp.com" }

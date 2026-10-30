@@ -7,6 +7,15 @@ import { getMessaging } from "firebase-admin/messaging";
 export const DEMO_PROJECT_ID = "demo-streaks";
 
 /**
+ * The project the emulators run as. `pnpm dev` uses demo-streaks; the test emulators run as
+ * demo-streaks-test (set in GCLOUD_PROJECT by `firebase emulators:exec`), so the two suites
+ * never share the CLI's per-project locator file. Only demo- projects are accepted here.
+ */
+export function emulatorProjectId(env: NodeJS.ProcessEnv = process.env): string {
+  return env.GCLOUD_PROJECT?.startsWith("demo-") ? env.GCLOUD_PROJECT : DEMO_PROJECT_ID;
+}
+
+/**
  * Whether the server uses the emulators. It follows the same switch as the browser
  * (NEXT_PUBLIC_FIREBASE_USE_EMULATORS, or no real web config at all), so the two never
  * disagree; emulator host variables set by `firebase emulators:exec` also turn it on.
@@ -29,17 +38,18 @@ function requireEnv(name: string): string {
 function createApp(): App {
   if (usingEmulators()) {
     // With an emulator host set, the Admin SDK accepts unsigned ID tokens, so anyone
-    // could act as anyone. Never allow that in a production deployment.
-    if (process.env.VERCEL_ENV === "production") {
+    // could act as anyone. Never allow that on Vercel (production or preview).
+    if (process.env.VERCEL) {
       throw new Error(
-        "Refusing to use the Firebase emulators in a production deployment. Remove the emulator " +
-          "variables and set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY.",
+        "Refusing to use the Firebase emulators on Vercel. Set the NEXT_PUBLIC_FIREBASE_* config, " +
+          "FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY for this environment, " +
+          "and do not set NEXT_PUBLIC_FIREBASE_USE_EMULATORS or any *_EMULATOR_HOST.",
       );
     }
     const host = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
     process.env.FIRESTORE_EMULATOR_HOST ??= `${host}:8080`;
     process.env.FIREBASE_AUTH_EMULATOR_HOST ??= `${host}:9099`;
-    return initializeApp({ projectId: DEMO_PROJECT_ID });
+    return initializeApp({ projectId: emulatorProjectId() });
   }
 
   const projectId = requireEnv("FIREBASE_PROJECT_ID");

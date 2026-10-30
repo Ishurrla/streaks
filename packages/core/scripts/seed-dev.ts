@@ -1,30 +1,28 @@
 // Emulator only: gives an existing user some habit history so streaks, the "at risk"
-// state and the Progress calendar have something to show. Usage, with emulators up:
-//   pnpm --filter functions seed:dev ada@example.com
+// state and the Progress calendar have something to show. Usage, with `pnpm dev` up:
+//   pnpm seed:dev ada@example.com
+import { FieldValue } from "firebase-admin/firestore";
+import { addDays, auth, computeStreaks, db, localDate, usingEmulators } from "../src/index";
+
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST ??= "127.0.0.1:9099";
-process.env.GCLOUD_PROJECT ??= "demo-streaks";
+if (!usingEmulators()) throw new Error("seed-dev only runs against the emulators.");
 
 const email = process.argv[2];
 if (!email) {
-  console.error("Usage: seed-dev.mjs <email>");
+  console.error("Usage: pnpm seed:dev <email>");
   process.exit(1);
 }
 
-const { auth, db } = await import("../lib/admin.js");
-const { addDays, computeStreaks } = await import("../lib/streaks.js");
-const { localDate } = await import("../lib/time.js");
-const { FieldValue } = await import("firebase-admin/firestore");
-
-const user = await auth.getUserByEmail(email);
-const userRef = db.collection("users").doc(user.uid);
+const user = await auth().getUserByEmail(email);
+const userRef = db().collection("users").doc(user.uid);
 const profile = await userRef.get();
 if (!profile.exists) {
   console.error(`${email} has no profile yet. Sign in once first.`);
   process.exit(1);
 }
-const today = localDate(new Date(), profile.get("timezone"));
-const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => addDays(today, -(from + i)));
+const today = localDate(new Date(), profile.get("timezone") as string);
+const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => addDays(today, -(from + i)));
 
 // Days ago that each habit was done. Mirrors the prototype's sample data.
 const HABITS = [
@@ -37,13 +35,8 @@ const HABITS = [
 for (const h of HABITS) {
   const ref = userRef.collection("habits").doc();
   const stats = computeStreaks(h.ago, [], today);
-  await ref.set({
-    name: h.name,
-    color: h.color,
-    createdAt: new Date(Date.now() - 45 * 86_400_000),
-    ...stats,
-  });
-  const batch = db.batch();
+  await ref.set({ name: h.name, color: h.color, createdAt: new Date(Date.now() - 45 * 86_400_000), ...stats });
+  const batch = db().batch();
   for (const d of h.ago) batch.set(ref.collection("checkIns").doc(d), { createdAt: FieldValue.serverTimestamp() });
   await batch.commit();
   console.log(`${h.name}: current ${stats.currentStreak}, best ${stats.bestStreak}`);

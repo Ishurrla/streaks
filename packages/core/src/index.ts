@@ -1,7 +1,7 @@
 // Server-only logic shared by the Next.js route handlers and the cron endpoints.
 // Everything takes the caller's uid and the current time as arguments, so the
 // routes decide who is calling (from a verified ID token) and tests control the clock.
-export { adminApp, auth, db, DEMO_PROJECT_ID, messaging, usingEmulators } from "./admin";
+export { adminApp, auth, db, DEMO_PROJECT_ID, emulatorProjectId, messaging, usingEmulators } from "./admin";
 export { CoreError, HTTP_STATUS, type ErrorCode } from "./errors";
 export { log } from "./log";
 export { HABIT_NAME_MAX, NAME_MAX, type Theme, type UserDoc } from "./model";

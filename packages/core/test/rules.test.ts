@@ -18,7 +18,9 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { DEMO_PROJECT_ID as PROJECT_ID } from "../src/admin";
+import { emulatorProjectId } from "../src/admin";
+
+const PROJECT_ID = emulatorProjectId();
 
 let env: RulesTestEnvironment;
 

@@ -3,12 +3,15 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "emulators": "pnpm --filter functions build && node scripts/firebase.mjs emulators:start --project demo-streaks",
-    "test": "pnpm --filter functions test && pnpm test:server && pnpm --filter web test",
-    "build": "pnpm -r run build",
     "dev:web": "pnpm --filter web dev",
-    "test:server": "node scripts/firebase.mjs emulators:exec --config firebase.test.json --project demo-streaks --only auth,firestore \"pnpm --filter @streaks/core test && pnpm --filter web test:routes\"",
-    "cron:dev": "node scripts/cron-dev.mjs"
+    "emulators": "node scripts/firebase.mjs emulators:start --project demo-streaks --only auth,firestore",
+    "emulators:test": "node scripts/firebase.mjs emulators:start --config firebase.test.json --project demo-streaks-test --only auth,firestore",
+    "test": "pnpm test:server && pnpm --filter web test",
+    "test:server": "node scripts/firebase.mjs emulators:exec --config firebase.test.json --project demo-streaks-test --only auth,firestore \"pnpm --filter @streaks/core test && pnpm --filter web test:routes\"",
+    "typecheck": "pnpm -r run typecheck",
+    "build": "pnpm -r run build",
+    "cron:dev": "node scripts/cron-dev.mjs",
+    "seed:dev": "pnpm --filter @streaks/core seed:dev"
   },
   "packageManager": "pnpm@11.1.3",
   "devDependencies": {

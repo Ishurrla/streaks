@@ -2,7 +2,7 @@ import type { Timestamp } from "firebase/firestore";
 
 export type Theme = "light" | "dark" | "system";
 
-/** users/{uid}. Mirrors functions/src/model.ts. */
+/** users/{uid}. Mirrors packages/core/src/model.ts. */
 export interface Profile {
   name: string;
   timezone: string;
@@ -12,6 +12,8 @@ export interface Profile {
   freezesAvailable: number;
   nextRolloverAt: Timestamp;
   lastReminderDate: string | null;
+  /** Server-owned: when the reminders job next looks at this user. */
+  nextReminderAt?: Timestamp | null;
   lastClosedDate?: string;
 }
 

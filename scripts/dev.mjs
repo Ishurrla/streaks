@@ -1,5 +1,5 @@
-// pnpm dev: builds the functions, then runs the emulators (Auth, Firestore, Functions,
-// plus the UI at http://127.0.0.1:4000) and the Next.js app together.
+// pnpm dev: runs the Auth and Firestore emulators (plus the UI at http://127.0.0.1:4000)
+// and the Next.js app, whose /api routes use the emulators through the Admin SDK.
 //
 // Ctrl+C stops both. The emulators save their data to .emulator-data on the way out and
 // load it again on the next start, so test users survive restarts. Press Ctrl+C a second
@@ -15,10 +15,6 @@ const DATA_DIR = ".emulator-data";
 const root = fileURLToPath(new URL("..", import.meta.url));
 
 mkdirSync(new URL(`../${DATA_DIR}`, import.meta.url), { recursive: true });
-
-console.log("Building functions…");
-const build = spawnSync("pnpm --filter functions build", { cwd: root, stdio: "inherit", shell: true });
-if (build.status !== 0) process.exit(build.status ?? 1);
 
 // Output goes through pipes, so ask for colour explicitly, unless the terminal opted out.
 const env = process.env.NO_COLOR ? { ...process.env } : { ...process.env, FORCE_COLOR: "1" };
@@ -49,7 +45,7 @@ run(
     [
       "emulators:start",
       "--project", PROJECT_ID,
-      "--only", "auth,firestore,functions",
+      "--only", "auth,firestore",
       "--import", DATA_DIR,
       "--export-on-exit", DATA_DIR,
     ],
