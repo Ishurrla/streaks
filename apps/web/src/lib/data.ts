@@ -10,9 +10,8 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 import { callApi } from "./api";
-import { db, functions } from "./firebase";
+import { db } from "./firebase";
 import { useLive } from "./live";
 
 /** users/{uid}/habits/{id}. The stats are written only by the server. */
@@ -102,10 +101,7 @@ export const callCheckIn = (habitId: string) => callApi<CheckInResult>("check-in
 
 export const callUndoCheckIn = (habitId: string) => callApi<CheckInResult>("undo-check-in", { habitId });
 
-export const callDeleteHabit = (habitId: string) =>
-  httpsCallable<{ habitId: string }, { deleted: boolean }>(functions, "deleteHabit")({ habitId }).then((r) => r.data);
+export const callDeleteHabit = (habitId: string) => callApi<{ deleted: boolean }>("delete-habit", { habitId });
 
 export const callUpdateTimezone = (timezone: string) =>
-  httpsCallable<{ timezone: string }, { timezone: string; today: string }>(functions, "updateTimezone")({
-    timezone,
-  }).then((r) => r.data);
+  callApi<{ timezone: string; today: string }>("update-timezone", { timezone });

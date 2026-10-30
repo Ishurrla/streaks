@@ -11,10 +11,9 @@ import {
   signOut,
   type User,
 } from "firebase/auth";
-import { httpsCallable } from "firebase/functions";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { callApi } from "./api";
-import { auth, functions } from "./firebase";
+import { auth } from "./firebase";
 import { disablePushOnThisDevice } from "./push";
 
 export type AuthState =
@@ -119,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await disablePushOnThisDevice();
         deletingAccount = true;
         try {
-          await httpsCallable(functions, "deleteAccount")();
+          await callApi("delete-account");
           explicitSignOut.current = true;
           await signOut(auth);
           queryClient.clear();

@@ -85,3 +85,29 @@ export async function checkInIds(uid: string, habitId: string) {
   const snap = await adminDb().collection(`users/${uid}/habits/${habitId}/checkIns`).get();
   return snap.docs.map((d) => d.id).sort();
 }
+
+/**
+ * Returns `idToken` with some claims changed, for example an old auth_time. This only
+ * works because Auth emulator tokens are unsigned and the Admin SDK skips signature
+ * checks in emulator mode; a real project would reject the edited token.
+ */
+export function withClaims(idToken: string, claims: Record<string, unknown>): string {
+  const [header, payload, signature = ""] = idToken.split(".");
+  const decoded = JSON.parse(Buffer.from(payload!, "base64url").toString("utf8")) as Record<string, unknown>;
+  const edited = Buffer.from(JSON.stringify({ ...decoded, ...claims })).toString("base64url");
+  return [header, edited, signature].join(".");
+}
+
+/**
+ * Sets when the user's tokens start counting as valid (what revokeRefreshTokens sets),
+ * so a test can hold a token whose sign-in is old without it counting as revoked.
+ */
+export async function setTokensValidSince(uid: string, seconds: number): Promise<void> {
+  const host = requireEnv("FIREBASE_AUTH_EMULATOR_HOST");
+  const res = await fetch(`http://${host}/identitytoolkit.googleapis.com/v1/projects/${DEMO_PROJECT_ID}/accounts:update`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer owner" },
+    body: JSON.stringify({ localId: uid, validSince: String(seconds) }),
+  });
+  if (!res.ok) throw new Error(`Auth emulator update failed: ${res.status} ${await res.text()}`);
+}

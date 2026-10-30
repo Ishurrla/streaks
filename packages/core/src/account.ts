@@ -15,7 +15,7 @@ export const RECENT_LOGIN_SECONDS = 5 * 60;
  */
 export async function deleteAccountFor(uid: string, authTimeSeconds: number | undefined, now: Date) {
   if (!authTimeSeconds || now.getTime() / 1000 - authTimeSeconds > RECENT_LOGIN_SECONDS) {
-    throw new CoreError("failed-precondition", "Sign in again to delete your account.", {
+    throw new CoreError("permission-denied", "Sign in again to delete your account.", {
       reason: "requires-recent-login",
     });
   }

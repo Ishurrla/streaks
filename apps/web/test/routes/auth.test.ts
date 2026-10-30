@@ -1,11 +1,26 @@
-import { checkInIds, clearFirestore, seedHabit, seedUser } from "@streaks/core/testing";
+import { adminDb, checkInIds, clearFirestore, seedHabit, seedUser } from "@streaks/core/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import { POST as checkIn } from "@/app/api/check-in/route";
+import { POST as deleteAccount } from "@/app/api/delete-account/route";
+import { POST as deleteHabit } from "@/app/api/delete-habit/route";
 import { POST as ensureProfile } from "@/app/api/ensure-profile/route";
+import { POST as registerPushToken } from "@/app/api/register-push-token/route";
+import { POST as removePushToken } from "@/app/api/remove-push-token/route";
 import { POST as undoCheckIn } from "@/app/api/undo-check-in/route";
+import { POST as updateTimezone } from "@/app/api/update-timezone/route";
 import { post } from "./helpers";
 
-const ROUTES = { "check-in": checkIn, "undo-check-in": undoCheckIn, "ensure-profile": ensureProfile };
+// Every route a signed-in user calls. Each must refuse a request without a valid token.
+const ROUTES = {
+  "check-in": checkIn,
+  "undo-check-in": undoCheckIn,
+  "ensure-profile": ensureProfile,
+  "delete-habit": deleteHabit,
+  "update-timezone": updateTimezone,
+  "register-push-token": registerPushToken,
+  "remove-push-token": removePushToken,
+  "delete-account": deleteAccount,
+};
 
 beforeEach(async () => {
   await clearFirestore();
@@ -37,10 +52,15 @@ describe.each(Object.entries(ROUTES))("%s rejects callers without a valid ID tok
   });
 });
 
-it("an unauthenticated check-in changes nothing", async () => {
+it("unauthenticated calls change nothing, whatever uid the body names", async () => {
   await seedUser("alice");
   await seedHabit("alice", "h1");
-  await post(checkIn, { habitId: "h1", uid: "alice" }, { token: null });
-  await post(checkIn, { habitId: "h1", uid: "alice" }, { token: "garbage" });
+  for (const handler of Object.values(ROUTES)) {
+    for (const token of [null, "garbage"]) {
+      await post(handler, { habitId: "h1", uid: "alice", timezone: "Asia/Tokyo", token: "t" }, { token });
+    }
+  }
   expect(await checkInIds("alice", "h1")).toEqual([]);
+  expect((await adminDb().doc("users/alice/habits/h1").get()).exists).toBe(true);
+  expect((await adminDb().doc("users/alice").get()).get("timezone")).toBe("Africa/Lagos");
 });

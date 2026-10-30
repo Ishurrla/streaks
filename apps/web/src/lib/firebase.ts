@@ -3,10 +3,6 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
-import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
-
-// Must match REGION in functions/src/index.ts.
-const FUNCTIONS_REGION = "europe-west1";
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -40,7 +36,7 @@ export const devWithEmulators = process.env.NODE_ENV === "development" && usingE
 export const emulatorHost = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
 
 // Must match the ports in firebase.json.
-export const EMULATOR_PORTS = { auth: 9099, firestore: 8080, functions: 5001 } as const;
+export const EMULATOR_PORTS = { auth: 9099, firestore: 8080 } as const;
 
 // On the emulators the app always uses the demo-streaks project, even when real config is
 // set: the emulators run as demo-streaks (callable URLs include the project ID), and a demo
@@ -55,7 +51,6 @@ function init() {
   if (usingEmulators) {
     connectAuthEmulator(getAuth(app), `http://${emulatorHost}:${EMULATOR_PORTS.auth}`, { disableWarnings: true });
     connectFirestoreEmulator(getFirestore(app), emulatorHost, EMULATOR_PORTS.firestore);
-    connectFunctionsEmulator(getFunctions(app, FUNCTIONS_REGION), emulatorHost, EMULATOR_PORTS.functions);
   }
   return app;
 }
@@ -63,7 +58,6 @@ function init() {
 export const app = init();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app, FUNCTIONS_REGION);
 
 /**
  * The app push registers with. With real config plus NEXT_PUBLIC_FIREBASE_USE_EMULATORS=true,

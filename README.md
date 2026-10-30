@@ -84,6 +84,11 @@ pnpm test        # everything: builds functions, runs all backend tests under th
 | Push tokens and account deletion | `functions/test/account.test.ts` | yes |
 | Web date and form helpers | `apps/web/src/lib/*.test.ts` | no |
 
+`pnpm test:server` (the new `packages/core` and `/api` route tests) runs its own Auth and Firestore
+emulators on separate ports from `firebase.test.json` (9199 and 8180, no UI), so it can run while
+`pnpm dev` is up and never touches your dev data. The `functions/` tests still use the default ports
+until `functions/` is removed.
+
 One part at a time:
 
 ```sh

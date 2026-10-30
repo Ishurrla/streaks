@@ -7,6 +7,7 @@ export interface RouteContext {
   uid: string;
   token: DecodedIdToken;
   body: Body;
+  req: Request;
 }
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -58,7 +59,7 @@ export function authedRoute<T>(handler: (ctx: RouteContext) => Promise<T>, { che
     try {
       const token = await verifyCaller(req, checkRevoked);
       const body = await readBody(req);
-      return Response.json(await handler({ uid: token.uid, token, body }));
+      return Response.json(await handler({ uid: token.uid, token, body, req }));
     } catch (e) {
       if (e instanceof CoreError) return errorResponse(HTTP_STATUS[e.code], e.code, e.message, e.details);
       log.error("Unhandled error in route", { path: new URL(req.url).pathname, error: String(e) });

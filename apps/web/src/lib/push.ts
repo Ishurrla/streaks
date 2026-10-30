@@ -1,8 +1,8 @@
 "use client";
 
-import { httpsCallable } from "firebase/functions";
 import { deleteToken, getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
-import { functions, pushApp, realPushAvailable, vapidKey, webConfig } from "./firebase";
+import { callApi } from "./api";
+import { pushApp, realPushAvailable, vapidKey, webConfig } from "./firebase";
 
 // The token this browser registered, so it can be removed on log out or switch-off.
 const STORAGE_KEY = "streaks-push-token";
@@ -69,7 +69,7 @@ export async function enablePushOnThisDevice(): Promise<void> {
     // reminders job logs what it would send instead of sending.
     token = deviceToken() ?? `emulator-${crypto.randomUUID()}`;
   }
-  await httpsCallable(functions, "registerPushToken")({ token });
+  await callApi("register-push-token", { token });
   rememberToken(token);
   if (process.env.NODE_ENV === "development") console.info("[push] registered token", token);
 }
@@ -79,7 +79,7 @@ export async function disablePushOnThisDevice(): Promise<void> {
   const token = deviceToken();
   if (!token) return;
   try {
-    await httpsCallable(functions, "removePushToken")({ token });
+    await callApi("remove-push-token", { token });
     if (realPushAvailable) await deleteToken(getMessaging(pushApp));
   } catch {
     // The server drops tokens FCM reports as dead, so a leftover is cleaned up later.

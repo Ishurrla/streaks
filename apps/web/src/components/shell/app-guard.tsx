@@ -52,7 +52,7 @@ function ProfileGate({ uid, children }: { uid: string; children: ReactNode }) {
           <h1 className="mb-2 text-2xl font-extrabold">We could not load your account</h1>
           <p className="mb-5 text-muted">Check your connection and try again.</p>
           {devWithEmulators ? (
-            // Development only: the real error, e.g. functions/internal when no functions loaded.
+            // Development only: the real error code from the server, e.g. not-found.
             <p className="-mt-3 mb-5 font-mono text-xs text-muted">{(error as { code?: string }).code ?? error.message}</p>
           ) : null}
           <div className="flex gap-2.5">
