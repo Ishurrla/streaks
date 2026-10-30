@@ -42,9 +42,9 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-[1120px] items-center justify-between gap-2.5 px-5 py-4">
+      <header className="mx-auto flex max-w-280 items-center justify-between gap-2.5 px-5 py-4">
         <div className="flex items-center gap-2 font-display text-xl font-extrabold">
-          <Flame live className="size-[26px]!" />
+          <Flame live className="size-6.5!" />
           Streaks
         </div>
         <nav aria-label="Account" className="flex items-center gap-2">
@@ -53,12 +53,12 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-[1120px] items-center gap-10 px-5 pt-7 pb-12 desk:grid-cols-[1.1fr_.9fr] desk:pt-14 desk:pb-20">
+        <section className="mx-auto grid max-w-280 items-center gap-10 px-5 pt-7 pb-12 desk:grid-cols-[1.1fr_.9fr] desk:pt-14 desk:pb-20">
           <div>
             <h1 className="text-[clamp(40px,8vw,70px)] leading-none font-extrabold">
               Small habits. <em className="text-flame not-italic">One streak</em> at a time.
             </h1>
-            <p className="mt-[18px] mb-[26px] max-w-[46ch] text-lg text-muted">
+            <p className="mt-4.5 mb-6.5 max-w-[46ch] text-lg text-muted">
               Check off the few things you want to do every day. Miss a day and the streak starts over, so you
               keep showing up.
             </p>
@@ -76,7 +76,7 @@ export default function LandingPage() {
             <h2 className="text-xl">Try it. Tap a habit.</h2>
             <p className="mt-0.5 mb-3.5 text-sm text-muted">This is what your Today screen feels like.</p>
             <LandingDemo />
-            <div className="mt-4 flex flex-wrap items-center gap-[5px]" aria-label="13 of the last 14 days done">
+            <div className="mt-4 flex flex-wrap items-center gap-1.25" aria-label="13 of the last 14 days done">
               <span className="mr-1.5 text-[13px] text-muted">Last 14 days</span>
               {Array.from({ length: 14 }, (_, i) => (
                 <i key={i} className={`size-3.5 rounded-full ${i === 5 ? "bg-line" : "bg-accent"}`} />
@@ -85,12 +85,12 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="mx-auto max-w-[1120px] scroll-mt-4 px-5 py-11">
+        <section id="features" className="mx-auto max-w-280 scroll-mt-4 px-5 py-11">
           <h2 className="mb-6 max-w-[18ch] text-[clamp(28px,4.5vw,42px)] font-extrabold">Built to keep you honest</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3.5">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-[20px] bg-surface p-5 shadow-card">
-                <div className="mb-3 grid size-11 place-items-center rounded-[13px] bg-flame-soft text-flame [&_svg]:size-[22px]">
+                <div className="mb-3 grid size-11 place-items-center rounded-[13px] bg-flame-soft text-flame [&_svg]:size-5.5">
                   {f.icon}
                 </div>
                 <h3 className="mb-1.5 text-lg">{f.title}</h3>
@@ -100,7 +100,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-[1120px] px-5 py-11">
+        <section className="mx-auto max-w-280 px-5 py-11">
           <h2 className="mb-6 max-w-[18ch] text-[clamp(28px,4.5vw,42px)] font-extrabold">
             Three steps, then every day
           </h2>
@@ -115,8 +115,8 @@ export default function LandingPage() {
           </ol>
         </section>
 
-        <section className="mx-auto mt-6 w-[calc(100%-40px)] max-w-[1080px] rounded-[30px] bg-accent px-6 py-11 text-center text-accent-ink">
-          <h2 className="mx-auto mb-[18px] max-w-[20ch] text-[clamp(28px,4.5vw,40px)] font-extrabold">
+        <section className="mx-auto mt-6 w-[calc(100%-40px)] max-w-270 rounded-[30px] bg-accent px-6 py-11 text-center text-accent-ink">
+          <h2 className="mx-auto mb-4.5 max-w-[20ch] text-[clamp(28px,4.5vw,40px)] font-extrabold">
             Day one starts today.
           </h2>
           <Link className="btn bg-accent-ink! text-accent!" href="/signup">
