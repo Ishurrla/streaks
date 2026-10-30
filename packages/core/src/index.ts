@@ -12,7 +12,19 @@ export { checkInFor, undoCheckInFor, type CheckInResult } from "./checkins";
 export { ensureProfileFor, type EnsureProfileInput } from "./profile";
 export { deleteHabitFor } from "./habits";
 export { updateTimezoneFor } from "./timezone";
-export { rolloverUser, runRollover, type RolloverResult } from "./rollover";
-export { loggingSender, reminderText, remindUser, runReminders, type RemindersResult, type Sender } from "./reminders";
+export { rolloverUser, runRollover, type RolloverOptions, type RolloverResult } from "./rollover";
+export {
+  loggingSender,
+  nextReminderAt,
+  reminderText,
+  remindUser,
+  runReminders,
+  syncReminderSchedule,
+  type ReminderOptions,
+  type ReminderSettings,
+  type RemindersResult,
+  type Sender,
+} from "./reminders";
+export { catchUpUser } from "./catchup";
 export { registerPushTokenFor, removePushTokenFor, requireToken, tokenId } from "./push";
 export { deleteAccountFor, RECENT_LOGIN_SECONDS } from "./account";

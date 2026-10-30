@@ -11,6 +11,8 @@ export interface UserDoc {
   freezesAvailable: number;
   nextRolloverAt: Timestamp;
   lastReminderDate: string | null;
+  /** When the reminders job should next look at this user; null with reminders off. Server-owned. */
+  nextReminderAt: Timestamp | null;
   /** Last local date settled by the rollover job. checkIn/undoCheckIn refuse it and anything earlier. */
   lastClosedDate: string;
   createdAt: Timestamp;

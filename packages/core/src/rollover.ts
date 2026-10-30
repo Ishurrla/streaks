@@ -89,15 +89,24 @@ export interface RolloverResult {
   rolledOver: number;
   skipped: number;
   failed: number;
+  /** false when the time budget ran out; the rest are picked up by the next run. */
+  done: boolean;
+}
+
+export interface RolloverOptions {
+  pageSize?: number;
+  /** Wall-clock time (ms) after which no new page is started. */
+  deadline?: number;
 }
 
 /**
  * Rolls over every user whose local midnight has passed. Users are read in pages and
  * one user's failure is logged and counted without stopping the rest; a failed user
- * keeps their old nextRolloverAt, so the next run retries them.
+ * keeps their old nextRolloverAt, so the next run retries them. With a deadline, no new
+ * page starts after it; anyone left is still due and is picked up by the next run.
  */
-export async function runRollover(now: Date, { pageSize = 100 } = {}): Promise<RolloverResult> {
-  const result: RolloverResult = { rolledOver: 0, skipped: 0, failed: 0 };
+export async function runRollover(now: Date, { pageSize = 100, deadline = Infinity }: RolloverOptions = {}): Promise<RolloverResult> {
+  const result: RolloverResult = { rolledOver: 0, skipped: 0, failed: 0, done: false };
   let cursor: QueryDocumentSnapshot | undefined;
 
   for (;;) {
@@ -120,7 +129,11 @@ export async function runRollover(now: Date, { pageSize = 100 } = {}): Promise<R
       }
     });
 
-    if (page.size < pageSize) break;
+    if (page.size < pageSize) {
+      result.done = true;
+      break;
+    }
+    if (Date.now() >= deadline) break;
     cursor = page.docs[page.docs.length - 1];
   }
 

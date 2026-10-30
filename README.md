@@ -62,6 +62,34 @@ pnpm --filter functions seed:dev ada@example.com
 If the dev server ever serves stale CSS after edits, stop it and delete `apps/web/.next`
 (Next.js keeps a persistent dev cache there).
 
+## Cron
+
+Two jobs run every 15 minutes, called by `.github/workflows/cron.yml` (GitHub Actions) with
+`Authorization: Bearer <CRON_SECRET>`:
+
+- `POST /api/cron/rollover` closes the day for everyone whose local midnight has passed.
+- `POST /api/cron/reminders` sends push reminders to users whose `nextReminderAt` has passed.
+
+Both are idempotent, stop starting new pages after about 7 seconds, and leave anything unfinished
+for the next run. The app also catches up on its own: every app start (`ensure-profile`) and every
+check-in rolls over that user if the cron is late, so streaks are right when people open the app.
+
+**Is the cron running?** After each completed run the endpoint writes `cron/rollover` and
+`cron/reminders` in Firestore with `lastSuccessfulRun`, `lastResult` and `lastDurationMs`. Look at
+them in the Firebase console (Firestore Database > `cron`). If `lastSuccessfulRun` is more than about
+an hour old, the GitHub schedule has stalled: check the repo's Actions tab. GitHub delays scheduled
+runs under load, and turns schedules off after 60 days without activity in the repo; re-enable the
+workflow there, or start a run by hand with "Run workflow".
+
+Locally, with `pnpm dev` running and any `CRON_SECRET` in `apps/web/.env.local`:
+
+```sh
+pnpm cron:dev              # both jobs
+pnpm cron:dev rollover     # or one of them
+```
+
+With the emulators, reminders are logged in the `web` output instead of being sent.
+
 ## Tests
 
 Run everything from the repo root. You do not need to start the emulators first:

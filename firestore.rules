@@ -32,7 +32,8 @@ service cloud.firestore {
       allow create, delete: if false;
 
       // Clients may change only these four fields. `freezesAvailable`, `timezone`,
-      // `nextRolloverAt`, `lastReminderDate` and anything else are server-owned.
+      // `nextRolloverAt`, `lastReminderDate`, `nextReminderAt` and anything else are
+      // server-owned.
       allow update: if isOwner(uid)
         && changedKeys().hasOnly(['name', 'reminderEnabled', 'reminderTime', 'theme'])
         && (!('name' in changedKeys()) || validUserName(request.resource.data.name))

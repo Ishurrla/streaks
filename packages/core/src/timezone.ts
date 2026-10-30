@@ -1,6 +1,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { CoreError } from "./errors";
 import { db } from "./admin";
+import { nextReminderAt } from "./reminders";
 import { readHabits, rolloverUser, writeStats } from "./rollover";
 import { addDays } from "./streaks";
 import { isValidTimezone, localDate, nextLocalMidnight } from "./time";
@@ -29,7 +30,19 @@ export async function updateTimezoneFor(uid: string, timezone: unknown, now: Dat
     const firstOpenDay = lastClosedDate ? addDays(lastClosedDate, 1) : localToday;
     const today = localToday > firstOpenDay ? localToday : firstOpenDay;
     const nextRolloverAt = nextLocalMidnight(now, timezone);
-    tx.update(userRef, { timezone, nextRolloverAt: Timestamp.fromDate(nextRolloverAt) });
+    // The reminder time is local, so moving zones moves when the next reminder is due.
+    const reminder = nextReminderAt(now, {
+      timezone,
+      reminderEnabled: user.get("reminderEnabled") as boolean | undefined,
+      reminderTime: user.get("reminderTime") as string | undefined,
+      lastReminderDate: (user.get("lastReminderDate") as string | null | undefined) ?? null,
+      lastClosedDate,
+    });
+    tx.update(userRef, {
+      timezone,
+      nextRolloverAt: Timestamp.fromDate(nextRolloverAt),
+      nextReminderAt: reminder ? Timestamp.fromDate(reminder) : null,
+    });
     writeStats(tx, habits, today);
     return { timezone, today, nextRolloverAt: nextRolloverAt.toISOString() };
   });

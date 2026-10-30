@@ -74,6 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) {
           explicitSignOut.current = false;
           setState({ status: "signedIn", user });
+          // On every app start: creates the profile if needed, and otherwise lets the server
+          // catch up (close a day the cron has not closed yet, refresh the reminder schedule).
+          ensureProfile(user.uid).catch(() => undefined);
         } else {
           setState({ status: "signedOut", explicit: explicitSignOut.current });
         }

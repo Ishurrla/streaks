@@ -6,6 +6,7 @@ import { FirebaseError } from "firebase/app";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { PageHead } from "@/components/views/page-head";
+import { callApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { callUpdateTimezone } from "@/lib/data";
 import { db, realPushAvailable } from "@/lib/firebase";
@@ -63,6 +64,11 @@ export function SettingsView() {
   async function save(fields: Partial<Pick<Profile, "name" | "theme" | "reminderEnabled" | "reminderTime">>, done?: string) {
     try {
       await updateDoc(userRef, fields);
+      // The server owns nextReminderAt; ask it to recompute. If this fails the setting is
+      // still saved, and the next app start (ensure-profile) brings the schedule up to date.
+      if ("reminderEnabled" in fields || "reminderTime" in fields) {
+        await callApi("sync-reminders").catch(() => undefined);
+      }
       if (done) toast(done);
       return true;
     } catch {

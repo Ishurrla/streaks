@@ -49,6 +49,8 @@ export async function ensureProfileFor(
       freezesAvailable: 1,
       nextRolloverAt: Timestamp.fromDate(nextLocalMidnight(now, timezone)),
       lastReminderDate: null,
+      // Reminders start off; syncReminderSchedule sets this when they are turned on.
+      nextReminderAt: null,
       // Nothing before sign-up can be checked in.
       lastClosedDate: addDays(localDate(now, timezone), -1),
       createdAt: FieldValue.serverTimestamp(),

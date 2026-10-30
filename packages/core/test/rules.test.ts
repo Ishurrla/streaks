@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   assertFails,
   assertSucceeds,
@@ -19,7 +18,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
-import { PROJECT_ID } from "./helpers";
+import { DEMO_PROJECT_ID as PROJECT_ID } from "../src/admin";
 
 let env: RulesTestEnvironment;
 
@@ -35,6 +34,7 @@ const userDoc = {
   freezesAvailable: 1,
   nextRolloverAt: Timestamp.fromDate(new Date("2026-10-28T23:00:00Z")),
   lastReminderDate: null,
+  nextReminderAt: null,
   lastClosedDate: "2026-10-27",
 };
 
@@ -63,7 +63,7 @@ const anon = () => env.unauthenticatedContext().firestore() as unknown as Firest
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: PROJECT_ID,
-    firestore: { rules: readFileSync(resolve(__dirname, "../../firestore.rules"), "utf8") },
+    firestore: { rules: readFileSync(new URL("../../../firestore.rules", import.meta.url), "utf8") },
   });
 });
 
@@ -129,6 +129,7 @@ describe("user documents", () => {
     await assertFails(updateDoc(ref, { timezone: "Asia/Tokyo" }));
     await assertFails(updateDoc(ref, { nextRolloverAt: Timestamp.now() }));
     await assertFails(updateDoc(ref, { lastReminderDate: "2026-10-28" }));
+    await assertFails(updateDoc(ref, { nextReminderAt: Timestamp.now() }));
     await assertFails(updateDoc(ref, { lastClosedDate: "2026-10-20" }));
     await assertFails(updateDoc(ref, { isAdmin: true }));
     // Sneaking a server field in alongside an allowed one is still rejected.
@@ -224,6 +225,33 @@ describe("checkIns and freezeUses", () => {
   });
 });
 
+describe("nextReminderAt", () => {
+  it("cannot be set, moved or cleared by the client, even with an allowed change alongside", async () => {
+    // As the server would have it with reminders on: a scheduled time.
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore() as unknown as Firestore, "users", ALICE), {
+        reminderEnabled: true,
+        nextReminderAt: Timestamp.fromDate(new Date("2026-10-28T19:00:00Z")),
+      }),
+    );
+    const ref = doc(alice(), "users", ALICE);
+    // Pulling the reminder forward, pushing it back, clearing it, or bundling it with a
+    // reminder setting the client may change: all rejected. Only the server writes it.
+    await assertFails(updateDoc(ref, { nextReminderAt: Timestamp.fromDate(new Date("2020-01-01T00:00:00Z")) }));
+    await assertFails(updateDoc(ref, { nextReminderAt: Timestamp.fromDate(new Date("2099-01-01T00:00:00Z")) }));
+    await assertFails(updateDoc(ref, { nextReminderAt: "now" }));
+    await assertFails(updateDoc(ref, { nextReminderAt: null }));
+    await assertFails(updateDoc(ref, { reminderEnabled: true, nextReminderAt: Timestamp.now() }));
+    await assertFails(updateDoc(ref, { reminderTime: "07:00", nextReminderAt: null }));
+    // The same settings change without it is fine.
+    await assertSucceeds(updateDoc(ref, { reminderEnabled: true, reminderTime: "07:00" }));
+  });
+
+  it("cannot be set by another user either", async () => {
+    await assertFails(updateDoc(doc(bob(), "users", ALICE), { nextReminderAt: Timestamp.now() }));
+  });
+});
+
 describe("pushTokens", () => {
   it("cannot be read or written by the client, even by its owner", async () => {
     await env.withSecurityRulesDisabled((ctx) =>
@@ -237,6 +265,17 @@ describe("pushTokens", () => {
 });
 
 describe("default deny", () => {
+  it("blocks the cron status documents for every client", async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore() as unknown as Firestore, "cron", "rollover"), { lastSuccessfulRun: Timestamp.now() }),
+    );
+    for (const db of [alice(), bob(), anon()]) {
+      await assertFails(getDoc(doc(db, "cron", "rollover")));
+      await assertFails(setDoc(doc(db, "cron", "rollover"), { lastSuccessfulRun: Timestamp.now() }));
+      await assertFails(setDoc(doc(db, "cron", "reminders"), { lastSuccessfulRun: Timestamp.now() }));
+    }
+  });
+
   it("blocks collections outside users/{uid}", async () => {
     await assertFails(getDoc(doc(alice(), "admin", "config")));
     await assertFails(setDoc(doc(alice(), "anything", "x"), { a: 1 }));

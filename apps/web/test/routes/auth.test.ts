@@ -6,6 +6,7 @@ import { POST as deleteHabit } from "@/app/api/delete-habit/route";
 import { POST as ensureProfile } from "@/app/api/ensure-profile/route";
 import { POST as registerPushToken } from "@/app/api/register-push-token/route";
 import { POST as removePushToken } from "@/app/api/remove-push-token/route";
+import { POST as syncReminders } from "@/app/api/sync-reminders/route";
 import { POST as undoCheckIn } from "@/app/api/undo-check-in/route";
 import { POST as updateTimezone } from "@/app/api/update-timezone/route";
 import { post } from "./helpers";
@@ -20,6 +21,7 @@ const ROUTES = {
   "register-push-token": registerPushToken,
   "remove-push-token": removePushToken,
   "delete-account": deleteAccount,
+  "sync-reminders": syncReminders,
 };
 
 beforeEach(async () => {
