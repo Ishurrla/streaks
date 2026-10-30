@@ -1,0 +1,24 @@
+{
+  "name": "@streaks/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "luxon": "^3.7.2"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.6",
+    "@types/node": "^22.20.5",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
+  }
+}

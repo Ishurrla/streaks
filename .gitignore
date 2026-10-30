@@ -16,3 +16,4 @@ ui-debug.log*
 .playwright-mcp/
 !functions/.env.demo-streaks
 .emulator-data/
+.vercel/

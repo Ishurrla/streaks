@@ -1,13 +1,13 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { FunctionsError } from "firebase/functions";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { HabitSheet, createHabit, HABIT_IDEAS, nextColor, type SheetState } from "@/components/habits/habit-sheet";
 import { CheckIcon, Flame, LockIcon } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { ErrorCard, LoadingCards } from "@/components/views/states";
+import { ApiError } from "@/lib/api";
 import { callCheckIn, callUndoCheckIn, useCheckInDays, useHabits, type Habit } from "@/lib/data";
 import { addDays, greeting, longDate, useLocalToday, weekdayShort } from "@/lib/dates";
 import { burst, rain } from "@/lib/fx";
@@ -81,7 +81,7 @@ export function TodayView() {
         return next;
       });
       toast(
-        error instanceof FunctionsError && error.code === "functions/failed-precondition"
+        error instanceof ApiError && error.code === "failed-precondition"
           ? "That day has already closed. Check-ins open again at midnight."
           : "Could not save that check-in. Try again.",
       );

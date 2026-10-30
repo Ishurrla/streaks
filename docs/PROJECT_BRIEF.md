@@ -19,9 +19,9 @@ Ignore the "Skip to next day", "See landing page" and "See sign up" buttons in t
 
 ## Stack
 
-- Firebase: Authentication (email and password), Cloud Firestore, Cloud Functions 2nd gen in TypeScript (callable functions and scheduled functions), Firebase Emulator Suite for all local development.
-- Frontend: Next.js (App Router) + TypeScript, Tailwind CSS v4, TanStack Query, Firebase JS SDK. pnpm. The landing page is a server component. Everything that touches Firebase Auth, Firestore or callables is a client component, and route protection is a client-side auth guard (no server sessions or Admin SDK in Next.js). Deploy the frontend to Vercel and the functions to Firebase.
-- Layout: app in `apps/web`, Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) at the repo root, functions in `functions/`.
+- Firebase (Spark plan): Authentication (email and password), Cloud Firestore, Cloud Messaging, and the Auth and Firestore emulators for all local development. Server logic runs in Next.js route handlers on Vercel (Node runtime) using the Firebase Admin SDK, not in Cloud Functions. The scheduled jobs are cron endpoints called every 15 minutes by a GitHub Actions workflow.
+- Frontend: Next.js (App Router) + TypeScript, Tailwind CSS v4, TanStack Query, Firebase JS SDK. pnpm. The landing page is a server component. Everything that touches Firebase Auth, Firestore or the server routes is a client component, and route protection is a client-side auth guard (no server sessions). The Admin SDK is used only inside route handlers, which verify the caller's Firebase ID token. Deploy the app and its routes to Vercel, and the Firestore rules and indexes to Firebase.
+- Layout: app in `apps/web`, shared server logic in `packages/core`, Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) at the repo root.
 - Build and test everything against the emulators first. I will deal with the Blaze plan and deploying later, so do not make anything depend on a live project.
 
 ## Data model (Firestore)
@@ -33,6 +33,8 @@ Ignore the "Skip to next day", "See landing page" and "See sign up" buttons in t
 - `users/{uid}/pushTokens/{tokenId}`: `token` (FCM web push token), `createdAt`, `userAgent`. One user can have several devices.
 
 ## Rules that must hold
+
+Where these rules say "callable" or "callable function", read a POST route handler of the same name (for example `checkIn` is `/api/check-in`) whose caller is the uid in the verified ID token. Where they say "scheduled function", read a cron endpoint called every 15 minutes. Where they say "function config", read the server environment (Vercel environment variables). The rules themselves are unchanged.
 
 1. **Private data.** Write `firestore.rules` so a user can only read their own documents under `users/{uid}`. Deny everything else by default. Use field-level validation:
    - Clients can update only `name`, `reminderEnabled`, `reminderTime` and `theme` on their user doc. They cannot touch `freezesAvailable`, `timezone`, `nextRolloverAt` or `lastReminderDate`.
@@ -68,7 +70,7 @@ Work in phases. **Stop after each phase, summarise what you did and how to verif
 5. Frontend: Today, Habits, Progress, Settings, animations, wired to the emulators.
 6. Push reminders (service worker `firebase-messaging-sw.js` served from the Next.js `public/` folder, which cannot read env vars, so pass the config another way; foreground message handling; token registration), `deleteAccount`, and a short deployment checklist for me (Blaze plan, budget alert, env config, deploy commands).
 
-Tests (Vitest, `@firebase/rules-unit-testing` for rules, and the Functions emulator for callables). Each must fail if the rule were broken:
+Tests (Vitest, `@firebase/rules-unit-testing` for rules, and the route handlers called in-process against the Auth and Firestore emulators). Each must fail if the rule were broken:
 - User B cannot read, update or delete user A's documents, and cannot check in on A's habit.
 - A client cannot write `checkIns`, `freezeUses`, or any stat or server-owned field.
 - Checking in twice in one day leaves one document and does not error.

@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { callApi } from "./api";
 import { auth, functions } from "./firebase";
 import { disablePushOnThisDevice } from "./push";
 
@@ -56,8 +57,7 @@ let deletingAccount = false;
 export function ensureProfile(uid: string): Promise<unknown> {
   if (deletingAccount) return Promise.resolve();
   if (inflight?.uid === uid) return inflight.promise;
-  const call = httpsCallable(functions, "ensureProfile");
-  const promise = call({ name: pendingName ?? undefined, timezone: browserTimezone() }).finally(() => {
+  const promise = callApi("ensure-profile", { name: pendingName ?? undefined, timezone: browserTimezone() }).finally(() => {
     if (inflight?.promise === promise) inflight = null;
   });
   inflight = { uid, promise };

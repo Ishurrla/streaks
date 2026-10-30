@@ -4,9 +4,10 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "emulators": "pnpm --filter functions build && node scripts/firebase.mjs emulators:start --project demo-streaks",
-    "test": "pnpm --filter functions test && pnpm --filter web test",
+    "test": "pnpm --filter functions test && pnpm test:server && pnpm --filter web test",
     "build": "pnpm -r run build",
-    "dev:web": "pnpm --filter web dev"
+    "dev:web": "pnpm --filter web dev",
+    "test:server": "node scripts/firebase.mjs emulators:exec --project demo-streaks --only auth,firestore \"pnpm --filter @streaks/core test && pnpm --filter web test:routes\""
   },
   "packageManager": "pnpm@11.1.3",
   "devDependencies": {

@@ -1,5 +1,6 @@
 packages:
   - functions
+  - packages/*
   - apps/*
 
 allowBuilds:

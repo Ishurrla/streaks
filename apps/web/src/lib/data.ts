@@ -11,6 +11,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import { callApi } from "./api";
 import { db, functions } from "./firebase";
 import { useLive } from "./live";
 
@@ -87,7 +88,7 @@ export function useCheckInDays(
   });
 }
 
-// Callables. The client never sends a date: the server works it out.
+// Server calls. The client never sends a date: the server works it out.
 
 export interface CheckInResult {
   date: string;
@@ -97,11 +98,9 @@ export interface CheckInResult {
   lastCheckInDate: string | null;
 }
 
-export const callCheckIn = (habitId: string) =>
-  httpsCallable<{ habitId: string }, CheckInResult>(functions, "checkIn")({ habitId }).then((r) => r.data);
+export const callCheckIn = (habitId: string) => callApi<CheckInResult>("check-in", { habitId });
 
-export const callUndoCheckIn = (habitId: string) =>
-  httpsCallable<{ habitId: string }, CheckInResult>(functions, "undoCheckIn")({ habitId }).then((r) => r.data);
+export const callUndoCheckIn = (habitId: string) => callApi<CheckInResult>("undo-check-in", { habitId });
 
 export const callDeleteHabit = (habitId: string) =>
   httpsCallable<{ habitId: string }, { deleted: boolean }>(functions, "deleteHabit")({ habitId }).then((r) => r.data);

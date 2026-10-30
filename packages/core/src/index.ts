@@ -1,0 +1,18 @@
+// Server-only logic shared by the Next.js route handlers and the cron endpoints.
+// Everything takes the caller's uid and the current time as arguments, so the
+// routes decide who is calling (from a verified ID token) and tests control the clock.
+export { adminApp, auth, db, DEMO_PROJECT_ID, messaging, usingEmulators } from "./admin";
+export { CoreError, HTTP_STATUS, type ErrorCode } from "./errors";
+export { log } from "./log";
+export { HABIT_NAME_MAX, NAME_MAX, type Theme, type UserDoc } from "./model";
+export { addDays, computeStreaks, dayNumber, type StreakStats } from "./streaks";
+export { DEFAULT_TIMEZONE, isValidTimezone, localDate, nextLocalMidnight } from "./time";
+export { optionalString, requireHabitId, type Body } from "./validation";
+export { checkInFor, undoCheckInFor, type CheckInResult } from "./checkins";
+export { ensureProfileFor, type EnsureProfileInput } from "./profile";
+export { deleteHabitFor } from "./habits";
+export { updateTimezoneFor } from "./timezone";
+export { rolloverUser, runRollover, type RolloverResult } from "./rollover";
+export { loggingSender, reminderText, remindUser, runReminders, type RemindersResult, type Sender } from "./reminders";
+export { registerPushTokenFor, removePushTokenFor, requireToken, tokenId } from "./push";
+export { deleteAccountFor, RECENT_LOGIN_SECONDS } from "./account";

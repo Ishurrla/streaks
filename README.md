@@ -90,6 +90,8 @@ One part at a time:
 pnpm --filter functions test:unit   # streak logic and time, no emulators, under a second
 pnpm --filter functions test        # all backend tests, under the emulators
 pnpm --filter web test              # web unit tests
+pnpm test:server                    # @streaks/core and the /api route handlers, under the Auth and Firestore emulators
+pnpm --filter @streaks/core test:unit   # streak logic and time, no emulators
 
 # A single backend file under the emulators (run from functions/):
 cd functions
