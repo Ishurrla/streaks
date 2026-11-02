@@ -72,11 +72,12 @@ and `project_id` is `streaks-b1dca`.
 
 ## 4. Set the env vars on Vercel and the GitHub secrets
 
-**4a. Push the repo to GitHub.** Create an empty private repository on GitHub, then:
+**4a. Push the repo to GitHub.** Use a **public** repository: GitHub Actions minutes are unlimited
+there. A private repo gets 2,000 minutes a month on the free plan, and a run every 15 minutes uses about
+2,900. Nothing secret is in git: env files are ignored, and secrets live only in Vercel and GitHub.
 
 ```sh
-git remote add origin https://github.com/<you>/streaks.git
-git push -u origin master
+gh repo create streaks --public --source=. --remote=origin --push
 ```
 
 GitHub starts the cron schedule as soon as `.github/workflows/cron.yml` is on the default branch,
@@ -135,7 +136,7 @@ without these values a preview refuses to start rather than misbehave.
 1. Firebase console > Build > **Authentication** > Settings > **Authorized domains** > Add domain:
    `<project-name>.vercel.app` (no `https://`). Add your custom domain too if you have one.
 2. Same page, **Sign-in method**: make sure **Email/Password** is enabled.
-
+   
 **Check:** the list holds `localhost`, `streaks-b1dca.firebaseapp.com`, `streaks-b1dca.web.app` and
 your Vercel domain; Sign-in method shows Email/Password as Enabled.
 
