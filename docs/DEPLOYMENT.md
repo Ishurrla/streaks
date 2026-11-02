@@ -80,9 +80,16 @@ there. A private repo gets 2,000 minutes a month on the free plan, and a run eve
 gh repo create streaks --public --source=. --remote=origin --push
 ```
 
-GitHub starts the cron schedule as soon as `.github/workflows/cron.yml` is on the default branch,
-and it would fail until the app is deployed. So straight away: GitHub > **Actions** > **cron** >
-"…" menu > **Disable workflow**. Step 7 turns it back on.
+Then see whether GitHub registered `.github/workflows/cron.yml`:
+
+```sh
+gh workflow list --all
+```
+
+- If **cron** is listed, its schedule has started and would fail until the app is deployed. Turn it
+  off straight away: GitHub > **Actions** > **cron** > "…" menu > **Disable workflow**.
+- If nothing is listed, GitHub missed the workflow in the repo's first push. This has happened here,
+  and nothing runs until it is registered. Leave it for now; step 7 fixes it.
 
 **4b. Make a cron secret.** Any long random string; for example:
 
@@ -98,6 +105,8 @@ repository.
   `apps/web/vercel.json` (functions run in `fra1`, Frankfurt).
 - The project name decides the domain: `<project-name>.vercel.app`, for example
   `https://streaks.vercel.app`. That is your `APP_URL` below.
+- **Node.js version**: nothing to set. `engines` in `apps/web/package.json` asks for `22.x`, which
+  overrides the Node.js Version setting in the dashboard.
 - Open **Environment Variables** on the import screen and add these for **Production**. Do not press
   Deploy yet.
 
@@ -128,7 +137,7 @@ without these values a preview refuses to start rather than misbehave.
 **Check:**
 - Vercel lists the 11 variables, all for Production, none of the emulator ones.
 - GitHub > Settings > Secrets and variables > Actions lists `APP_URL` and `CRON_SECRET`.
-- GitHub > Actions shows the **cron** workflow, marked disabled.
+- `gh workflow list --all` shows **cron** as disabled, or shows nothing (see 4a).
 - `git ls-files | grep -i env` shows only `apps/web/.env.example`.
 
 ## 5. Add the Vercel domain to Firebase Auth
@@ -145,8 +154,8 @@ your Vercel domain; Sign-in method shows Email/Password as Enabled.
 Press **Deploy** on the Vercel import screen (later deploys happen on every push to `master`).
 
 **Check:**
-- The build log ends with "Compiled successfully" and lists the routes, including eleven dynamic
-  (`ƒ`) ones under `/api/`.
+- The build log shows Node 22, says "Compiled successfully" and lists the routes, including eleven
+  dynamic (`ƒ`) ones under `/api/`.
 - Settings > Domains shows the domain you expected. If Vercel picked a different one, update
   `APP_URL` in Vercel and in GitHub, add it to the authorized domains (step 5), then Redeploy.
 - Open the site and sign up. Today greets you by name. In the browser's network tab,
@@ -158,6 +167,10 @@ Press **Deploy** on the Vercel import screen (later deploys happen on every push
 - Vercel > Logs: no errors. In particular none saying "Refusing to use the Firebase emulators" or
   "… is not set" (a missing or misspelled variable; fix it and Redeploy, since env changes only apply
   to new deployments).
+- If the logs show `ERR_REQUIRE_ESM` with `jwks-rsa` and `jose`, the `jwks-rsa` override in
+  `pnpm-workspace.yaml` is not in effect. Vercel functions have failed this way on Node 22 with
+  `jwks-rsa` 4, whose `jose` 6 is ES-module-only, so changing the Node version did not help. Check that
+  the override and `pnpm-lock.yaml` are both pushed.
 - The routes refuse strangers (both should print `401`):
 
   ```sh
@@ -167,11 +180,19 @@ Press **Deploy** on the Vercel import screen (later deploys happen on every push
 
 ## 7. Run the cron workflow by hand
 
-GitHub > **Actions** > **cron** > **Enable workflow**, then **Run workflow** (branch `master`).
+First get the workflow active. Either of these starts its 15-minute schedule:
+
+- If **cron** is listed as disabled: GitHub > **Actions** > **cron** > **Enable workflow**.
+- If nothing is listed: commit any change to `.github/workflows/cron.yml`, even to a comment, and push
+  it to `master`. That also redeploys the app. `gh workflow list --all` should then show **cron** as
+  active.
+
+Then **Run workflow** (branch `master`).
 
 **Check:**
-- Both steps are green. The Rollover step prints `{"ok":true,"rolledOver":…,"done":true}` and the
-  Reminders step `{"ok":true,"sent":…,"done":true}`.
+- Both steps are green. The Rollover step prints `{"ok":true,"rolledOver":…,"skipped":…,"failed":…,"done":true}`
+  and the Reminders step `{"ok":true,"sent":…,"skipped":…,"failed":…,"done":true}`. All zeros is normal
+  when nothing is due.
 - Firestore > Data: `cron/rollover` and `cron/reminders` exist, with `lastSuccessfulRun` a minute ago
   and `lastResult` matching the output.
 - Over the next hour scheduled runs appear in the Actions tab (GitHub often starts them late) and
@@ -182,6 +203,10 @@ GitHub > **Actions** > **cron** > **Enable workflow**, then **Run workflow** (br
 ## After deploying
 
 - Try a real reminder on a phone: README > "Testing notifications", level 3.
+- After your local midnight, `lastClosedDate` on your `users/{uid}` document should move forward. That
+  is the first real rollover.
+- When updating `firebase-admin`, try removing the `jwks-rsa` override in `pnpm-workspace.yaml`. Recheck
+  it before verifying App Check or phone number tokens with the Admin SDK, which do use `jwks-rsa`.
 - Watch the cron: README > "Cron" explains `lastSuccessfulRun`. GitHub turns scheduled workflows off
   after 60 days without repo activity; re-enable it in the Actions tab if that happens.
 - Spark quotas are 50,000 document reads and 20,000 writes a day (Firebase console > Usage). The
