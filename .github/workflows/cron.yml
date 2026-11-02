@@ -9,7 +9,7 @@
 #
 # GitHub may delay scheduled runs, and turns schedules off after 60 days without repo
 # activity. cron/{rollover,reminders}.lastSuccessfulRun in Firestore shows the last run;
-# see "Cron" in the README.
+# see "Cron" in the README and step 7 of docs/DEPLOYMENT.md.
 name: cron
 
 on:
