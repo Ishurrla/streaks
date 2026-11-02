@@ -9,3 +9,10 @@ allowBuilds:
   re2: false
   sharp: false
   unrs-resolver: false
+
+overrides:
+  # firebase-admin 14 loads jwks-rsa 4 on import, which require()s the ES-module-only jose 6.
+  # Vercel functions fail on that with ERR_REQUIRE_ESM. 3.2.2 uses jose 4, which has a CommonJS
+  # build. We never call jwks-rsa: firebase-admin only uses it for App Check and phone number
+  # tokens. Recheck this before verifying those, and try removing it when updating firebase-admin.
+  jwks-rsa: 3.2.2
