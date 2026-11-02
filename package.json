@@ -14,6 +14,9 @@
     "seed:dev": "pnpm --filter @streaks/core seed:dev"
   },
   "packageManager": "pnpm@11.1.3",
+  "engines": {
+    "node": ">=22.12"
+  },
   "devDependencies": {
     "firebase-tools": "14.24.2"
   }

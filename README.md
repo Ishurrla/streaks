@@ -12,7 +12,7 @@ Auth, Firestore and Cloud Messaging; the server logic runs in Next.js route hand
 
 ## Requirements
 
-Node 22+, pnpm and Java 21+ (for the Firestore emulator). The Firebase CLI is a dev dependency, so
+Node 22.12+, pnpm and Java 21+ (for the Firestore emulator). The Firebase CLI is a dev dependency, so
 `pnpm install` brings the right version (`pnpm exec firebase ...`).
 
 ## Running locally
