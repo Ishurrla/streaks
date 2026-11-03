@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  experimental: {
+    // Turbopack's on-disk cache (on by default) kept serving an old globals.css after it
+    // changed, both in `pnpm dev` across restarts and in Vercel builds, so new styles never
+    // appeared. Without it every run compiles the CSS from source.
+    turbopackFileSystemCacheForDev: false,
+    turbopackFileSystemCacheForBuild: false,
+  },
 };
 
 export default nextConfig;
