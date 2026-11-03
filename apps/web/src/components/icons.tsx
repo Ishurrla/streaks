@@ -89,6 +89,43 @@ export function MoonIcon({ className }: IconProps) {
   );
 }
 
+export function SunIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...stroke} strokeWidth="2">
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+    </svg>
+  );
+}
+
+/** The moon with a small star, shown on the theme switch's knob. */
+export function MoonStarIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...stroke} strokeWidth="2">
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+      <path d="M17.5 3.5v3M16 5h3" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+export function EyeIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...stroke} strokeWidth="2">
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...stroke} strokeWidth="2">
+      <path d="M9.9 5.8A9.7 9.7 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.3 2.5 12 2.5 12S6 18.5 12 18.5c1.8 0 3.3-.5 4.6-1.2" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
+    </svg>
+  );
+}
+
 export function StarIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

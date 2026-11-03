@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FirebaseError } from "firebase/app";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
+import { PasswordInput } from "@/components/password-input";
 import { PageHead } from "@/components/views/page-head";
 import { SignInMethodsSection } from "@/components/settings/sign-in-methods";
 import { callApi } from "@/lib/api";
@@ -283,6 +284,8 @@ function AccountSection({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Bumped after each failed attempt, which hides the password again.
+  const [failures, setFailures] = useState(0);
 
   async function confirmDelete(e: FormEvent) {
     e.preventDefault();
@@ -293,6 +296,7 @@ function AccountSection({
       await onDelete(googleOnly ? null : password);
     } catch (err) {
       setBusy(false);
+      setFailures((n) => n + 1);
       const code = err instanceof FirebaseError ? err.code : "";
       if (googleOnly && code) return setError(googleSettingsError(code));
       setError(
@@ -328,10 +332,9 @@ function AccountSection({
                 <label className="field-label" htmlFor="delete-password">
                   Enter your password to confirm
                 </label>
-                <input
+                <PasswordInput
                   id="delete-password"
-                  className="input"
-                  type="password"
+                  resetKey={failures}
                   autoComplete="current-password"
                   autoFocus
                   value={password}

@@ -145,8 +145,8 @@ export function TodayView() {
   return (
     <>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] leading-[1.1] font-extrabold desk:text-4xl">
+        <div className="min-w-0">
+          <h1 className="text-[28px] leading-[1.1] font-extrabold [overflow-wrap:anywhere] desk:text-4xl">
             {greeting(profile.timezone)}, {profile.name}
           </h1>
           <p className="mt-1.5 text-muted">
@@ -210,9 +210,10 @@ export function TodayView() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <Flame live={topStreak > 0} />
-                <div>
+                {/* A long habit name wraps here instead of widening the whole Today grid. */}
+                <div className="min-w-0 [overflow-wrap:anywhere]">
                   <b className="block font-display text-xl leading-[1.1]">
                     {topStreak > 0 ? `${topStreak} day streak` : "No streak yet"}
                   </b>

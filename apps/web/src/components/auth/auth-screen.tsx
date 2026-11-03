@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { GoogleButton, Note, WelcomeTick } from "@/components/auth/google-sign-in";
 import { Flame } from "@/components/icons";
+import { PasswordInput } from "@/components/password-input";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { useToast } from "@/components/toast";
 import { useAuth, type GoogleSignIn } from "@/lib/auth";
 import { devWithEmulators, EMULATOR_PORTS, emulatorHost } from "@/lib/firebase";
@@ -41,21 +43,25 @@ function Field({
   id,
   label,
   error,
+  resetKey,
   ...input
-}: { id: string; label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: { id: string; label: string; error?: string; resetKey?: unknown } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const shared = {
+    id,
+    name: id,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": error ? `${id}-error` : undefined,
+  } as const;
   return (
     <>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <input
-        id={id}
-        name={id}
-        className="input"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        {...input}
-      />
+      {input.type === "password" ? (
+        <PasswordInput {...shared} {...input} resetKey={resetKey} />
+      ) : (
+        <input className="input" {...shared} {...input} />
+      )}
       {error && (
         <div id={`${id}-error`} className="err">
           {error}
@@ -92,6 +98,8 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
   const [fields, setFields] = useState<AuthFields>({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<AuthErrors>({});
   const [busy, setBusy] = useState(false);
+  // Bumped after each failed attempt, which hides the password again.
+  const [failures, setFailures] = useState(0);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [note, setNote] = useState<AuthNote | null>(null);
   const [welcome, setWelcome] = useState<GoogleSignIn | null>(null);
@@ -133,7 +141,10 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
     e.preventDefault();
     const errs = validateAuth(mode, fields);
     setErrors(errs);
-    if (Object.keys(errs).length) return focusFirstError(errs);
+    if (Object.keys(errs).length) {
+      setFailures((n) => n + 1);
+      return focusFirstError(errs);
+    }
 
     setBusy(true);
     try {
@@ -151,6 +162,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
           ? { form: `Could not reach the Auth emulator at ${emulatorHost}:${EMULATOR_PORTS.auth}. Start it with pnpm dev.` }
           : authErrorFromCode(code);
       setErrors(mapped);
+      setFailures((n) => n + 1);
       focusFirstError(mapped);
       setBusy(false);
     }
@@ -213,9 +225,12 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
       </div>
 
       <main className="flex flex-1 flex-col px-[22px] pt-9 pb-7 desk:justify-center desk:p-14 [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-[400px]">
-        <div className="flex items-center gap-2 font-display text-xl font-extrabold">
-          <Flame live />
-          Streaks
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-display text-xl font-extrabold">
+            <Flame live />
+            Streaks
+          </div>
+          <ThemeSwitch />
         </div>
         {welcome ? (
           <WelcomeTick isNew={welcome.isNew} name={welcome.name} to={welcome.isNew ? "/today" : next} />
@@ -271,7 +286,8 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
                 error={errors.email}
               />
               <Field
-                id="password"
+                resetKey={failures}
+              id="password"
                 label="Password"
                 type="password"
                 autoComplete={signup ? "new-password" : "current-password"}

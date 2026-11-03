@@ -11,7 +11,8 @@
     "typecheck": "pnpm -r run typecheck",
     "build": "pnpm -r run build",
     "cron:dev": "node scripts/cron-dev.mjs",
-    "seed:dev": "pnpm --filter @streaks/core seed:dev"
+    "seed:dev": "pnpm --filter @streaks/core seed:dev",
+    "test:layout": "pnpm --filter web test:layout"
   },
   "packageManager": "pnpm@11.1.3",
   "engines": {

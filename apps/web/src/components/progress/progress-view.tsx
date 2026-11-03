@@ -46,7 +46,7 @@ export function ProgressView() {
                   aria-pressed={on}
                   onClick={() => setPicked(h.id)}
                   style={{ "--hc": h.color } as React.CSSProperties}
-                  className={`flex-none rounded-full border-[1.5px] px-3.5 py-2 text-sm ${
+                  className={`min-h-11 flex-none rounded-full border-[1.5px] px-3.5 py-2 text-sm ${
                     on ? "border-(--hc) bg-(--hc) font-bold text-white" : "border-line bg-surface font-medium"
                   }`}
                 >
@@ -99,7 +99,7 @@ function HabitProgress({ uid, habit, timezone }: { uid: string; habit: Habit; ti
         <div className="mb-2.5 flex items-center justify-between">
           <button
             type="button"
-            className="grid size-9 place-items-center rounded-full border-[1.5px] border-line disabled:opacity-30"
+            className="grid size-11 place-items-center rounded-full border-[1.5px] border-line disabled:opacity-30"
             aria-label="Previous month"
             disabled={atStart}
             onClick={() => setMonth((m) => shiftMonth(m, -1))}
@@ -111,7 +111,7 @@ function HabitProgress({ uid, habit, timezone }: { uid: string; habit: Habit; ti
           </h2>
           <button
             type="button"
-            className="grid size-9 place-items-center rounded-full border-[1.5px] border-line disabled:opacity-30"
+            className="grid size-11 place-items-center rounded-full border-[1.5px] border-line disabled:opacity-30"
             aria-label="Next month"
             disabled={atEnd}
             onClick={() => setMonth((m) => shiftMonth(m, 1))}

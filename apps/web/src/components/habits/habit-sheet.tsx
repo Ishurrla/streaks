@@ -100,7 +100,10 @@ function HabitForm({
       if (editing) {
         await updateDoc(doc(habitsRef(uid), editing.id), { name: trimmed, color });
       } else {
-        onCreated?.(await createHabit(uid, trimmed, color));
+        // Not onCreated?.(await createHabit(...)): an optional call skips its arguments
+        // when there is no callback, so the habit would never be created.
+        const id = await createHabit(uid, trimmed, color);
+        onCreated?.(id);
       }
       onClose();
       toast("Saved.");

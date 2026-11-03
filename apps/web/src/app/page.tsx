@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { CalendarIcon, CheckIcon, Flame, LockIcon, MoonIcon } from "@/components/icons";
 import { LandingDemo } from "@/components/landing/landing-demo";
 import { LandingNavActions } from "@/components/landing/nav-actions";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 // Public landing page. A Server Component; only the demo card and the auth-aware
 // nav buttons run in the browser.
@@ -42,12 +43,14 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-280 items-center justify-between gap-2.5 px-5 py-4">
+      <header className="mx-auto flex max-w-280 items-center justify-between gap-2.5 px-4 py-4 min-[400px]:px-5">
         <div className="flex items-center gap-2 font-display text-xl font-extrabold">
           <Flame live className="size-6.5!" />
-          Streaks
+          {/* On the narrowest phones the flame alone leaves room for the switch and both buttons. */}
+          <span className="max-[399px]:sr-only">Streaks</span>
         </div>
         <nav aria-label="Account" className="flex items-center gap-2">
+          <ThemeSwitch />
           <LandingNavActions />
         </nav>
       </header>

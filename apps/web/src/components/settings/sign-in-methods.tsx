@@ -3,6 +3,7 @@
 import { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { useState, type FormEvent } from "react";
+import { PasswordInput } from "@/components/password-input";
 import { useToast } from "@/components/toast";
 import { useAuth } from "@/lib/auth";
 import { authErrorFromCode } from "@/lib/validation";
@@ -118,12 +119,14 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string | null }>({});
   const [busy, setBusy] = useState(false);
+  // Bumped after each failed attempt, which hides both passwords again.
+  const [failures, setFailures] = useState(0);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     const invalid = validateNewPassword(password, confirm);
     setErrors(invalid);
-    if (invalid.password || invalid.confirm) return;
+    if (invalid.password || invalid.confirm) return setFailures((n) => n + 1);
 
     setBusy(true);
     try {
@@ -137,6 +140,7 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
           ? { password: authErrorFromCode(code).password }
           : { form: googleSettingsError(code) },
       );
+      setFailures((n) => n + 1);
       setBusy(false);
     }
   }
@@ -148,10 +152,9 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
       <label className="field-label" htmlFor="new-password">
         New password
       </label>
-      <input
+      <PasswordInput
         id="new-password"
-        className="input"
-        type="password"
+        resetKey={failures}
         autoComplete="new-password"
         value={password}
         onChange={(e) => setValue(e.target.value)}
@@ -166,10 +169,9 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
       <label className="field-label" htmlFor="confirm-password">
         Confirm password
       </label>
-      <input
+      <PasswordInput
         id="confirm-password"
-        className="input"
-        type="password"
+        resetKey={failures}
         autoComplete="new-password"
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}

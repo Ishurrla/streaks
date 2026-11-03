@@ -9,7 +9,7 @@ export function LandingNavActions() {
 
   if (state.status === "signedIn") {
     return (
-      <Link className="btn px-4! py-[9px]!" href="/today">
+      <Link className="btn px-3.5! py-[9px]! whitespace-nowrap min-[400px]:px-4!" href="/today">
         Open Streaks
       </Link>
     );
@@ -17,10 +17,10 @@ export function LandingNavActions() {
 
   return (
     <>
-      <Link className="btn btn-ghost px-4! py-[9px]!" href="/login">
+      <Link className="btn btn-ghost px-3.5! py-[9px]! whitespace-nowrap min-[400px]:px-4!" href="/login">
         Log in
       </Link>
-      <Link className="btn px-4! py-[9px]!" href="/signup">
+      <Link className="btn px-3.5! py-[9px]! whitespace-nowrap min-[400px]:px-4!" href="/signup">
         Get started
       </Link>
     </>

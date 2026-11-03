@@ -19,6 +19,14 @@
   --google-fill: #ffffff;
   --google-stroke: #747775;
   --google-text: #1f1f1f;
+  /* Theme switch, from docs/design/theme-switch-prototype.html. --ts-on is 0 in light, 1 in dark. */
+  --track: #d8dee9;
+  --track-edge: #c3cbda;
+  --knob: #ffffff;
+  --sun: #f59a0c;
+  --moon: #4f63d2;
+  --ts-ghost: #9aa5bc;
+  --ts-on: 0;
   --shadow: 0 1px 2px rgba(18, 32, 28, 0.06), 0 8px 24px rgba(18, 32, 28, 0.07);
   color-scheme: light;
 }
@@ -40,6 +48,18 @@
     --google-fill: #131314;
     --google-stroke: #8e918f;
     --google-text: #e3e3e3;
+  --track: #4a5578;
+  --track-edge: #3a4464;
+  --knob: #f6f8fd;
+  --moon: #5b72e8;
+  --ts-ghost: #8a96b8;
+  --ts-on: 1;
+    --track: #4a5578;
+    --track-edge: #3a4464;
+    --knob: #f6f8fd;
+    --moon: #5b72e8;
+    --ts-ghost: #8a96b8;
+    --ts-on: 1;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -122,6 +142,7 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+    min-height: 44px;
     padding: 11px 18px;
     border-radius: 999px;
     background: var(--accent);
@@ -147,6 +168,11 @@
     cursor: default;
   }
   .link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     color: var(--accent);
     font-weight: 700;
     padding: 8px 6px;
@@ -190,6 +216,10 @@
     padding: 4px;
   }
   .seg > * {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
     padding: 10px;
     border-radius: 999px;
     font-weight: 700;
@@ -450,8 +480,8 @@
   }
 
   .colour-swatch {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--hc);
     display: grid;
@@ -485,17 +515,22 @@
 
   .switch {
     width: 52px;
-    height: 30px;
-    border-radius: 999px;
-    background: var(--line);
+    height: 44px;
     position: relative;
     flex: none;
+  }
+  .switch::before {
+    content: "";
+    position: absolute;
+    inset: 7px 0;
+    border-radius: 999px;
+    background: var(--line);
     transition: background 0.2s;
   }
   .switch::after {
     content: "";
     position: absolute;
-    top: 3px;
+    top: 10px;
     left: 3px;
     width: 24px;
     height: 24px;
@@ -504,7 +539,7 @@
     transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
-  .switch[aria-checked="true"] {
+  .switch[aria-checked="true"]::before {
     background: var(--accent);
   }
   .switch[aria-checked="true"]::after {
@@ -594,6 +629,9 @@
     margin-bottom: 2px;
   }
   .note-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: inherit;
     font-weight: 700;
     text-decoration: underline;
@@ -666,6 +704,117 @@
     flex: none;
     padding: 8px 14px;
     font-size: 14px;
+  }
+
+  /* Sun and moon theme switch: a 72 by 36 track in a 44px-high button. */
+  .theme-switch {
+    display: inline-grid;
+    place-items: center;
+    width: 72px;
+    height: 44px;
+    flex: none;
+    border-radius: 22px;
+  }
+  .theme-switch:focus-visible {
+    outline: none;
+  }
+  .theme-switch:focus-visible .ts-track {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .ts-track {
+    position: relative;
+    display: block;
+    width: 72px;
+    height: 36px;
+    border-radius: 18px;
+    background: var(--track);
+    box-shadow:
+      inset 0 2px 4px var(--track-edge),
+      0 1px 0 rgba(255, 255, 255, 0.4);
+    transition: background 0.3s;
+  }
+  .ts-icon {
+    position: absolute;
+    top: 9px;
+    width: 18px;
+    height: 18px;
+    color: var(--ts-ghost);
+    transition: opacity 0.25s;
+  }
+  /* The track icon under the knob is hidden; the other one shows, muted. */
+  .ts-sun {
+    left: 9px;
+    opacity: var(--ts-on);
+  }
+  .ts-moon {
+    right: 9px;
+    opacity: calc(1 - var(--ts-on));
+  }
+  .ts-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--knob);
+    box-shadow:
+      0 2px 6px rgba(20, 28, 45, 0.28),
+      0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    transform: translateX(calc(var(--ts-on) * 36px));
+    transition: transform 0.28s cubic-bezier(0.3, 1.5, 0.5, 1);
+  }
+  .ts-knob-sun,
+  .ts-knob-moon {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    transition:
+      opacity 0.2s,
+      transform 0.28s;
+  }
+  .ts-knob-sun {
+    color: var(--sun);
+    opacity: calc(1 - var(--ts-on));
+    transform: rotate(calc(var(--ts-on) * 40deg)) scale(calc(1 - var(--ts-on) * 0.4));
+  }
+  .ts-knob-moon {
+    color: var(--moon);
+    opacity: var(--ts-on);
+    transform: rotate(calc((var(--ts-on) - 1) * 40deg)) scale(calc(0.6 + var(--ts-on) * 0.4));
+  }
+
+  /* Password field with a show/hide button inside its right edge. */
+  .password-field {
+    position: relative;
+  }
+  .password-field .input {
+    padding-right: 52px;
+  }
+  .password-field .input::-ms-reveal {
+    display: none;
+  }
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 3px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: var(--muted);
+    transform: translateY(-50%);
+  }
+  .password-toggle:hover {
+    color: var(--ink);
+  }
+  .password-toggle svg {
+    width: 22px;
+    height: 22px;
   }
 
   /* Confetti layer. */

@@ -129,7 +129,14 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Every `/api` route: tokens, input, other users, catch-up | `apps/web/test/routes/*.test.ts` | yes |
 | Cron endpoints: secret, both jobs | `apps/web/test/routes/cron.test.ts` | yes |
 | Google sign-in, linking, set password, delete (real client SDK, no popup) | `apps/web/test/routes/google-account.test.ts` | yes |
-| Web date, form and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
+| Web date, form, theme and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
+| Theme switch and password field (jsdom) | `apps/web/src/components/*.test.tsx` | no |
+| No sideways scroll at 360 to 1280px, light and dark (real browser) | `apps/web/e2e/layout.spec.ts` | `pnpm dev` |
+
+The layout test is separate from `pnpm test` because it drives the running app. With `pnpm dev`
+up, run `pnpm test:layout`. It signs up a throwaway user on the emulators and deletes it at the end,
+uses your installed Chrome, and refuses to run against anything but localhost. Set
+`LAYOUT_BASE_URL` to point it at another local server, such as `next start` on another port.
 
 One part at a time:
 
