@@ -1,5 +1,5 @@
 import { auth } from "@streaks/core";
-import { adminDb, clearFirestore, signUpUser } from "@streaks/core/testing";
+import { adminDb, clearFirestore, signInWithGoogle, signUpUser } from "@streaks/core/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 import { POST as ensureProfile } from "@/app/api/ensure-profile/route";
 import { post } from "./helpers";
@@ -102,5 +102,48 @@ describe("POST /api/ensure-profile", () => {
     expect(res.status).toBe(403);
     expect(res.json.error).toMatchObject({ code: "permission-denied", details: { reason: "account-closed" } });
     expect(await profile(user.uid)).toBeUndefined();
+  });
+});
+
+describe("POST /api/ensure-profile for Google users", () => {
+  it("takes the first name from the token's name claim", async () => {
+    const user = await signInWithGoogle({ sub: "g-ada", email: "ada.obi@example.com", name: "Ada Obi" });
+    const res = await post(ensureProfile, {}, { token: user.idToken });
+    expect(res.json).toEqual({ created: true });
+    expect((await profile(user.uid))!.name).toBe("Ada");
+  });
+
+  it("falls back to the email prefix when Google gives no name", async () => {
+    const user = await signInWithGoogle({ sub: "g-grace", email: "grace.hopper@example.com" });
+    await post(ensureProfile, {}, { token: user.idToken });
+    expect((await profile(user.uid))!.name).toBe("grace.hopper");
+  });
+
+  it("keeps the name within the 1 to 50 characters the rules allow", async () => {
+    const longName = await signInWithGoogle({ sub: "g-long", email: "long@example.com", name: `${"x".repeat(80)} Obi` });
+    await post(ensureProfile, {}, { token: longName.idToken });
+    expect((await profile(longName.uid))!.name).toBe("x".repeat(50));
+
+    const longEmail = await signInWithGoogle({ sub: "g-long-email", email: `${"y".repeat(80)}@example.com` });
+    await post(ensureProfile, {}, { token: longEmail.idToken });
+    expect((await profile(longEmail.uid))!.name).toBe("y".repeat(50));
+  });
+
+  it("does not overwrite a returning user's name", async () => {
+    const google = { sub: "g-back", email: "back@example.com", name: "Ada Obi" };
+    const first = await signInWithGoogle(google);
+    await post(ensureProfile, {}, { token: first.idToken });
+    await adminDb().doc(`users/${first.uid}`).update({ name: "Ada Lovelace" });
+
+    const again = await signInWithGoogle(google);
+    expect(again.uid).toBe(first.uid);
+    expect((await post(ensureProfile, {}, { token: again.idToken })).json).toEqual({ created: false });
+    expect((await profile(first.uid))!.name).toBe("Ada Lovelace");
+  });
+
+  it("still prefers a typed name over the token's", async () => {
+    const user = await signInWithGoogle({ sub: "g-typed", email: "typed@example.com", name: "Ada Obi" });
+    await post(ensureProfile, { name: "Adaeze" }, { token: user.idToken });
+    expect((await profile(user.uid))!.name).toBe("Adaeze");
   });
 });

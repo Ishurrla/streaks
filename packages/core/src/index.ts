@@ -9,7 +9,7 @@ export { addDays, computeStreaks, dayNumber, type StreakStats } from "./streaks"
 export { DEFAULT_TIMEZONE, isValidTimezone, localDate, nextLocalMidnight } from "./time";
 export { optionalString, requireHabitId, type Body } from "./validation";
 export { checkInFor, undoCheckInFor, type CheckInResult } from "./checkins";
-export { ensureProfileFor, type EnsureProfileInput } from "./profile";
+export { ensureProfileFor, nameFromClaims, type EnsureProfileInput } from "./profile";
 export { deleteHabitFor } from "./habits";
 export { updateTimezoneFor } from "./timezone";
 export { rolloverUser, runRollover, type RolloverOptions, type RolloverResult } from "./rollover";

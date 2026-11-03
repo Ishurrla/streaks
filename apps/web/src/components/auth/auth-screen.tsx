@@ -4,10 +4,12 @@ import { FirebaseError } from "firebase/app";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import { GoogleButton, Note, WelcomeTick } from "@/components/auth/google-sign-in";
 import { Flame } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type GoogleSignIn } from "@/lib/auth";
 import { devWithEmulators, EMULATOR_PORTS, emulatorHost } from "@/lib/firebase";
+import { googleSignInNote, type AuthNote } from "@/lib/sign-in";
 import {
   authErrorFromCode,
   isEmail,
@@ -21,13 +23,15 @@ import {
 const COPY = {
   signup: {
     title: "Keep the chain going.",
-    lead: "Small habits, checked off daily. Miss a day and the streak starts over, so show up.",
+    lead: "Create your account in one tap, or use your email.",
+    google: "Sign up with Google",
     submit: "Create account",
     busy: "Creating account…",
   },
   login: {
     title: "Welcome back.",
-    lead: "Your streaks are waiting for you.",
+    lead: "Pick up where your streaks left off.",
+    google: "Sign in with Google",
     submit: "Log in",
     busy: "Logging in…",
   },
@@ -82,20 +86,37 @@ function AuthScreenWithParams({ mode }: { mode: AuthMode }) {
 function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | null }) {
   const router = useRouter();
   const next = safeNext(nextParam);
-  const { state, signUp, logIn, sendPasswordReset } = useAuth();
+  const { state, signUp, logIn, signInWithGoogle, sendPasswordReset } = useAuth();
   const toast = useToast();
 
   const [fields, setFields] = useState<AuthFields>({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<AuthErrors>({});
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [note, setNote] = useState<AuthNote | null>(null);
+  const [welcome, setWelcome] = useState<GoogleSignIn | null>(null);
+  // Holds the redirect below while Google sign-in finishes and the welcome tick plays.
+  const googleInProgress = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const copy = COPY[mode];
   const signup = mode === "signup";
 
   // Already signed in (or just signed in): go to the app.
   useEffect(() => {
-    if (state.status === "signedIn") router.replace(next);
+    if (state.status === "signedIn" && !googleInProgress.current) router.replace(next);
   }, [state.status, next, router]);
+
+  // Next keeps this page mounted but hidden after leaving it, so start clean on coming back.
+  useEffect(
+    () => () => {
+      googleInProgress.current = false;
+      setBusy(false);
+      setGoogleBusy(false);
+      setNote(null);
+      setWelcome(null);
+    },
+    [],
+  );
 
   const query = nextParam ? `?next=${encodeURIComponent(next)}` : "";
 
@@ -132,6 +153,27 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
       setErrors(mapped);
       focusFirstError(mapped);
       setBusy(false);
+    }
+  }
+
+  async function onGoogle() {
+    googleInProgress.current = true;
+    setGoogleBusy(true);
+    setNote(null);
+    setErrors({});
+    try {
+      setWelcome(await signInWithGoogle());
+    } catch (err) {
+      googleInProgress.current = false;
+      const code = err instanceof FirebaseError ? err.code : undefined;
+      const shown = googleSignInNote(code);
+      if (shown.action?.does === "retry") console.error("Google sign-in failed:", code ?? err);
+      setNote(
+        devWithEmulators && code === "auth/network-request-failed"
+          ? { ...shown, body: `Could not reach the Auth emulator at ${emulatorHost}:${EMULATOR_PORTS.auth}. Start it with pnpm dev.` }
+          : shown,
+      );
+      setGoogleBusy(false);
     }
   }
 
@@ -175,71 +217,89 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
           <Flame live />
           Streaks
         </div>
-        <div className="mt-1.5">
-          <Link className="link" href="/">
-            Back to home
-          </Link>
-        </div>
-        <h1 className="mt-7 mb-2 text-[34px] leading-[1.05] font-extrabold">{copy.title}</h1>
-        <p className="mb-5 text-muted">{copy.lead}</p>
-
-        <nav className="seg mb-1.5" aria-label="Sign up or log in">
-          <Link href={`/signup${query}`} aria-current={signup ? "page" : undefined} replace>
-            Sign up
-          </Link>
-          <Link href={`/login${query}`} aria-current={signup ? undefined : "page"} replace>
-            Log in
-          </Link>
-        </nav>
-
-        <form ref={formRef} onSubmit={onSubmit} noValidate>
-          {signup && (
-            <Field
-              id="name"
-              label="Your name"
-              autoComplete="given-name"
-              maxLength={50}
-              value={fields.name}
-              onChange={update("name")}
-              error={errors.name}
-            />
-          )}
-          <Field
-            id="email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            value={fields.email}
-            onChange={update("email")}
-            error={errors.email}
-          />
-          <Field
-            id="password"
-            label="Password"
-            type="password"
-            autoComplete={signup ? "new-password" : "current-password"}
-            value={fields.password}
-            onChange={update("password")}
-            error={errors.password}
-          />
-          {errors.form && (
-            <div className="err mt-4! text-sm!" role="alert">
-              {errors.form}
+        {welcome ? (
+          <WelcomeTick isNew={welcome.isNew} name={welcome.name} to={welcome.isNew ? "/today" : next} />
+        ) : (
+          <>
+            <div className="mt-1.5">
+              <Link className="link" href="/">
+                Back to home
+              </Link>
             </div>
-          )}
-          <div className="mt-[22px]">
-            <button className="btn btn-block" type="submit" disabled={busy}>
-              {busy ? copy.busy : copy.submit}
-            </button>
-          </div>
-        </form>
+            <h1 className="mt-7 mb-2 text-[34px] leading-[1.05] font-extrabold">{copy.title}</h1>
+            <p className="mb-5 text-muted">{copy.lead}</p>
 
-        {!signup && (
-          <div className="mt-4 text-center">
-            <button className="link" type="button" onClick={onForgot}>
-              Forgot your password?
-            </button>
-          </div>
+            <nav className="seg mb-1.5" aria-label="Sign up or log in">
+              <Link href={`/signup${query}`} aria-current={signup ? "page" : undefined} replace>
+                Sign up
+              </Link>
+              <Link href={`/login${query}`} aria-current={signup ? undefined : "page"} replace>
+                Log in
+              </Link>
+            </nav>
+
+            <div className="mt-3.5">
+              <GoogleButton label={copy.google} busy={googleBusy} disabled={busy} onClick={onGoogle} />
+              {note && (
+                <Note
+                  note={note}
+                  onAction={(does) => (does === "retry" ? onGoogle() : router.replace(`/login${query}`))}
+                />
+              )}
+              <div className="or-divider">or use your email</div>
+            </div>
+
+            <form ref={formRef} onSubmit={onSubmit} noValidate>
+              {signup && (
+                <Field
+                  id="name"
+                  label="Your name"
+                  autoComplete="given-name"
+                  maxLength={50}
+                  value={fields.name}
+                  onChange={update("name")}
+                  error={errors.name}
+                />
+              )}
+              <Field
+                id="email"
+                label="Email"
+                type="email"
+                autoComplete="email"
+                value={fields.email}
+                onChange={update("email")}
+                error={errors.email}
+              />
+              <Field
+                id="password"
+                label="Password"
+                type="password"
+                autoComplete={signup ? "new-password" : "current-password"}
+                value={fields.password}
+                onChange={update("password")}
+                error={errors.password}
+              />
+              {errors.form && (
+                <div className="err mt-4! text-sm!" role="alert">
+                  {errors.form}
+                </div>
+              )}
+              <div className="mt-[22px]">
+                <button className="btn btn-block" type="submit" disabled={busy || googleBusy}>
+                  {busy ? copy.busy : copy.submit}
+                </button>
+              </div>
+            </form>
+
+            {!signup && (
+              <div className="mt-4 text-center">
+                <button className="link" type="button" onClick={onForgot}>
+                  Forgot your password?
+                </button>
+              </div>
+            )}
+            <p className="mt-4 text-center text-[13px] text-muted">We only use Google to confirm who you are. We never post anything.</p>
+          </>
         )}
       </main>
     </div>

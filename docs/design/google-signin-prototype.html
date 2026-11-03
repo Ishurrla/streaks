@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streaks Google Sign-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: same tokens as the Streaks app; one centred auth card plus a Settings card, a prototype bar to force each outcome */
+:root{
+  --bg:#EAF1EE;--surface:#FFFFFF;--ink:#12201C;--muted:#586C66;--line:#D5E1DC;
+  --accent:#13795B;--accent-ink:#FFFFFF;--flame:#F2780C;--flame-soft:#FFE9D3;--done-soft:#DCF2E8;--danger:#B93A27;--danger-soft:#FBE7E3;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(18,32,28,.06),0 8px 24px rgba(18,32,28,.07);color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C1513;--surface:#16231F;--ink:#E8F2EE;--muted:#97ADA6;--line:#26372F;--accent:#3DD6A3;--accent-ink:#06201A;--flame:#FFA03D;--flame-soft:#3B2A17;--done-soft:#17392D;--danger:#FF8672;--danger-soft:#3A1F1A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0C1513;--surface:#16231F;--ink:#E8F2EE;--muted:#97ADA6;--line:#26372F;--accent:#3DD6A3;--accent-ink:#06201A;--flame:#FFA03D;--flame-soft:#3B2A17;--done-soft:#17392D;--danger:#FF8672;--danger-soft:#3A1F1A;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:10px}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.01em;text-wrap:balance}
+.page{min-height:100%;display:flex;flex-direction:column;align-items:center}
+.proto{width:100%;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;padding:10px 16px;font-size:13px;color:var(--muted)}
+.proto label{display:flex;gap:6px;align-items:center}
+.proto select{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px}
+.proto .tabs{display:flex;gap:4px;background:var(--line);padding:3px;border-radius:999px}
+.proto .tabs button{padding:5px 12px;border-radius:999px;font-size:13px;font-weight:500;color:var(--muted)}
+.proto .tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+.wrap{width:100%;max-width:440px;padding:20px 16px 48px}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:20px;margin-bottom:22px}
+.flame{width:28px;height:28px;transform-origin:50% 90%;animation:flicker 1.6s ease-in-out infinite}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg)}35%{transform:scale(1.08,1.12) rotate(2deg)}65%{transform:scale(.96,1.04) rotate(-1deg)}}
+.card{background:var(--surface);border-radius:24px;padding:24px 22px;box-shadow:var(--shadow)}
+h1{font-size:30px;line-height:1.1;font-weight:800;margin-bottom:6px}
+.lead{color:var(--muted);margin-bottom:18px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--line);border-radius:999px;padding:4px;margin-bottom:16px}
+.seg button{padding:10px;border-radius:999px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;transition:border-color .2s,transform .12s,background .2s}
+.gbtn:hover{border-color:var(--accent)}
+.gbtn:active{transform:scale(.985)}
+.gbtn[disabled]{opacity:.75;cursor:progress}
+.gmark{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--muted);flex:none}
+.spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:16px 0}
+.or::before,.or::after{content:"";height:1px;background:var(--line);flex:1}
+label.f{display:block;font-weight:700;font-size:14px;margin:12px 0 6px}
+.input{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-size:16px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;margin-top:20px}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);margin-top:12px}
+.note{border-radius:14px;padding:12px 14px;margin-top:14px;font-size:14px;display:flex;gap:10px;align-items:flex-start;animation:rise .3s ease-out}
+.note.info{background:var(--done-soft)}
+.note.error{background:var(--danger-soft);color:var(--danger)}
+.note b{display:block;margin-bottom:2px}
+.note .linkbtn{color:inherit;font-weight:700;text-decoration:underline;margin-top:6px;padding:0}
+@keyframes rise{from{transform:translateY(8px);opacity:0}}
+.fine{font-size:13px;color:var(--muted);text-align:center;margin-top:16px}
+/* Google account chooser (stand-in for the real Google pop-up) */
+.scrim{position:fixed;inset:0;background:rgba(5,12,10,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.chooser{width:100%;max-width:380px;background:var(--surface);border-radius:24px;padding:22px;box-shadow:var(--shadow);animation:rise .3s cubic-bezier(.2,.9,.3,1)}
+.chooser h2{font-size:20px;margin-bottom:2px}
+.chooser .sub{color:var(--muted);font-size:14px;margin-bottom:12px}
+.acct{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;text-align:left}
+.acct:hover{background:var(--bg)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
+.acct .n{font-weight:700;line-height:1.2}
+.acct .e{font-size:13px;color:var(--muted)}
+.chooser .cancel{margin-top:8px;width:100%;padding:12px;border-radius:999px;color:var(--muted);font-weight:700}
+/* success */
+.done{text-align:center;padding:16px 4px}
+.done .ring{width:84px;height:84px;margin:0 auto 14px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+.done .ring svg{width:42px;height:42px}
+.done .ring path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .4s .2s ease-out forwards}
+@keyframes pop{from{transform:scale(.5)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+.done h2{font-size:26px;margin-bottom:6px}
+.done p{color:var(--muted)}
+.bar{height:6px;border-radius:99px;background:var(--line);margin:18px auto 0;max-width:220px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);animation:fill 2.2s linear forwards}
+@keyframes fill{to{width:100%}}
+/* settings preview */
+.sec h2{font-size:20px;margin-bottom:2px}
+.sec .desc{color:var(--muted);font-size:14px;margin-bottom:10px}
+.method{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.method .meta{flex:1;min-width:0}
+.method .t{font-weight:700}
+.method .d{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.pill{padding:5px 11px;border-radius:999px;background:var(--done-soft);font-weight:700;font-size:13px;flex:none}
+.small{padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:700;font-size:14px;flex:none}
+.small:hover:not([disabled]){border-color:var(--accent)}
+.small[disabled]{opacity:.45;cursor:not-allowed}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.bar i{width:100%}.done .ring path{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="proto">
+    <span>Prototype</span>
+    <div class="tabs" role="group" aria-label="Screen">
+      <button id="tAuth" aria-pressed="true" type="button">Sign up / Log in</button>
+      <button id="tSet" aria-pressed="false" type="button">Settings</button>
+    </div>
+    <label>Google result
+      <select id="sim">
+        <option value="new">New user, signs up</option>
+        <option value="returning">Returning user, signs in</option>
+        <option value="exists">Email already has a password account</option>
+        <option value="blocked">Pop-up blocked by browser</option>
+      </select>
+    </label>
+  </div>
+  <main class="wrap" id="root"></main>
+</div>
+<div id="layer"></div>
+
+<script>
+var S={view:"auth",mode:"signup",busy:false,msg:null,done:null,chooser:false,linked:false,
+  emailMethod:true,chooserFor:"auth"};
+var $=function(s){return document.querySelector(s)};
+var FLAME='<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.9 3.6 5.2 5.9 5.2 11a5.2 5.2 0 0 1-10.4 0c0-2.2 1-3.6 2.1-4.7.3 1.4 1 2.2 1.8 2.5C10.2 7.5 10.6 4.2 12 1.5z" fill="var(--flame)"/><path d="M12 22a3 3 0 0 1-3-3c0-1.7 1.4-2.5 2-4 .4.8 1 1.2 1.6 1.2.6-1.100 2-2.100 2.200-2.900.9 1.200 1.200 2.400 1.200 6.200a3 3 0 0 1-3 3z" fill="#FFD27A"/></svg>';
+var TICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path pathLength="1" d="M5 12.500l4.500 4.500L19 7.500"/></svg>';
+var ACCTS=[["Ada Obi","ada.obi@example.com","#3B6FD8"],["Ada Obi (work)","ada@studio.example.com","#C2569A"]];
+
+function render(){
+  var r=$("#root");
+  if(S.view==="settings"){r.innerHTML=settingsHtml();return}
+  if(S.done){r.innerHTML='<div class="logo">'+FLAME+'Streaks</div><div class="card done"><div class="ring">'+TICK+'</div><h2>'+(S.done==="new"?"Welcome, Ada":"Welcome back, Ada")+'</h2><p>'+(S.done==="new"?"Your account is ready. Taking you to set up your first habit.":"Taking you to Today.")+'</p><div class="bar"><i></i></div><button class="btn ghost" id="again" type="button">Start over (prototype)</button></div>';return}
+  var su=S.mode==="signup";
+  var h='<div class="logo">'+FLAME+'Streaks</div><div class="card"><h1>'+(su?"Keep the chain going.":"Welcome back.")+'</h1><p class="lead">'+(su?"Create your account in one tap, or use your email.":"Pick up where your streaks left off.")+'</p>';
+  h+='<div class="seg" role="group" aria-label="Sign up or log in"><button data-m="signup" aria-pressed="'+su+'" type="button">Sign up</button><button data-m="login" aria-pressed="'+!su+'" type="button">Log in</button></div>';
+  h+='<button class="gbtn" id="g" type="button"'+(S.busy?" disabled":"")+'>'+(S.busy?'<span class="spin"></span>Signing you in…':'<span class="gmark" aria-hidden="true">G</span>'+(su?"Sign up with Google":"Sign in with Google"))+'</button>';
+  h+=noteHtml();
+  h+='<div class="or">or use your email</div>';
+  if(su)h+='<label class="f" for="n">Your name</label><input class="input" id="n" autocomplete="given-name">';
+  h+='<label class="f" for="e">Email</label><input class="input" id="e" type="email" autocomplete="email"><label class="f" for="p">Password</label><input class="input" id="p" type="password" autocomplete="'+(su?"new-password":"current-password")+'">';
+  h+='<button class="btn" type="button">'+(su?"Create account":"Log in")+'</button>';
+  h+='<p class="fine">We only use Google to confirm who you are. We never post anything.</p></div>';
+  r.innerHTML=h;
+}
+function noteHtml(){
+  var m=S.msg;if(!m)return "";
+  if(m==="cancelled")return '<div class="note info" role="status"><div><b>Sign-in cancelled</b>No problem. Try again whenever you are ready.</div></div>';
+  if(m==="blocked")return '<div class="note error" role="alert"><div><b>Your browser blocked the Google window</b>Allow pop-ups for this site, then try again.</div></div>';
+  if(m==="exists")return '<div class="note error" role="alert"><div><b>This email already has an account</b>Log in with your password first. You can connect Google afterwards in Settings.<br><button class="linkbtn" id="toLogin" type="button">Log in with email</button></div></div>';
+  return "";
+}
+function settingsHtml(){
+  var h='<div class="logo">'+FLAME+'Streaks</div><div class="card sec"><h2>Sign-in methods</h2><p class="desc">The ways you can get into your account.</p>';
+  h+='<div class="method"><div class="meta"><div class="t">Email and password</div><div class="d">ada.obi@example.com</div></div><span class="pill">Connected</span></div>';
+  h+='<div class="method"><div class="meta"><div class="t">Google</div><div class="d">'+(S.linked?"ada.obi@example.com":"Not connected")+'</div></div>';
+  if(S.linked)h+='<button class="small" id="unlink" type="button">Disconnect</button>';
+  else h+='<button class="small" id="link" type="button">Connect</button>';
+  h+='</div>';
+  h+='<div class="note info" style="margin-top:10px"><div>'+(S.linked?"You can sign in with either method. Disconnecting is allowed because your password still works.":"Connect Google to sign in with one tap next time.")+'</div></div>';
+  h+='<div class="method" style="margin-top:10px"><div class="meta"><div class="t">Google-only account?</div><div class="d">If you signed up with Google and have no password, Disconnect is switched off so you cannot lock yourself out. Add a password first.</div></div><button class="small" disabled type="button">Disconnect</button></div></div>';
+  return h;
+}
+function chooserHtml(){
+  var h='<div class="scrim" id="scrim"><div class="chooser" role="dialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">Choose an account</h2><p class="sub">to continue to Streaks (stand-in for the Google window)</p>';
+  ACCTS.forEach(function(a,i){h+='<button class="acct" data-i="'+i+'" type="button"><span class="av" style="background:'+a[2]+'">'+a[0].charAt(0)+'</span><span><span class="n" style="display:block">'+a[0]+'</span><span class="e">'+a[1]+'</span></span></button>'});
+  h+='<button class="cancel" id="cx" type="button">Cancel</button></div></div>';
+  return h;
+}
+function openChooser(from){
+  var sim=$("#sim").value;
+  S.msg=null;S.chooserFor=from;
+  if(sim==="blocked"){S.msg="blocked";if(from==="settings"){toastSet("Your browser blocked the Google window. Allow pop-ups and try again.")}render();return}
+  $("#layer").innerHTML=chooserHtml();$(".acct").focus();
+}
+function closeChooser(){$("#layer").innerHTML=""}
+function pick(){
+  closeChooser();
+  var sim=$("#sim").value;
+  if(S.chooserFor==="settings"){S.linked=true;render();return}
+  S.busy=true;render();
+  setTimeout(function(){
+    S.busy=false;
+    if(sim==="exists"){S.msg="exists";render();return}
+    S.done=sim==="returning"?"returning":"new";render();
+  },1200);
+}
+function toastSet(t){var e=document.createElement("div");e.className="note error";e.textContent=t;$("#root").appendChild(e);setTimeout(function(){e.remove()},3500)}
+
+document.addEventListener("click",function(ev){
+  var t=ev.target.closest("button,.scrim");if(!t)return;
+  if(t.id==="g"){return openChooser("auth")}
+  if(t.dataset&&t.dataset.m){S.mode=t.dataset.m;S.msg=null;return render()}
+  if(t.id==="toLogin"){S.mode="login";S.msg=null;return render()}
+  if(t.id==="again"){S.done=null;S.msg=null;return render()}
+  if(t.id==="link"){return openChooser("settings")}
+  if(t.id==="unlink"){S.linked=false;return render()}
+  if(t.id==="cx"||(t.id==="scrim"&&ev.target===t)){closeChooser();if(S.chooserFor==="auth"){S.msg="cancelled";render()}return}
+  if(t.classList.contains("acct")){return pick()}
+  if(t.id==="tAuth"||t.id==="tSet"){S.view=t.id==="tSet"?"settings":"auth";$("#tAuth").setAttribute("aria-pressed",S.view==="auth");$("#tSet").setAttribute("aria-pressed",S.view==="settings");closeChooser();return render()}
+});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("#scrim")){closeChooser();if(S.chooserFor==="auth"){S.msg="cancelled";render()}}});
+render();
+</script>
+</body>
+</html>

@@ -52,6 +52,10 @@ pnpm cron:dev                   # run both cron jobs now (see "Cron")
 
 To run the two halves separately: `pnpm emulators` (no saved data) and `pnpm dev:web`.
 
+**Google sign-in locally** needs no Google credentials. On the emulators, the Google button opens the
+Auth emulator's own window: choose "Add new account", then "Auto-generate user information" or fill
+in a name and email. Settings > Sign-in methods and deleting a Google-only account use the same window.
+
 If the dev server ever serves stale CSS after edits, stop it and delete `apps/web/.next`
 (Next.js keeps a persistent dev cache there).
 
@@ -124,6 +128,7 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Deleting habits and accounts | `packages/core/test/{habits,account}.test.ts` | yes |
 | Every `/api` route: tokens, input, other users, catch-up | `apps/web/test/routes/*.test.ts` | yes |
 | Cron endpoints: secret, both jobs | `apps/web/test/routes/cron.test.ts` | yes |
+| Google sign-in, linking, set password, delete (real client SDK, no popup) | `apps/web/test/routes/google-account.test.ts` | yes |
 | Web date, form and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
 
 One part at a time:

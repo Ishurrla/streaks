@@ -144,10 +144,13 @@ without these values a preview refuses to start rather than misbehave.
 
 1. Firebase console > Build > **Authentication** > Settings > **Authorized domains** > Add domain:
    `<project-name>.vercel.app` (no `https://`). Add your custom domain too if you have one.
-2. Same page, **Sign-in method**: make sure **Email/Password** is enabled.
+2. Same page, **Sign-in method**: make sure **Email/Password** and **Google** are enabled. Google asks
+   for a project support email.
+3. Same page, Settings > **User account linking**: **Link accounts that use the same email**. The app
+   relies on one account per email.
    
 **Check:** the list holds `localhost`, `streaks-b1dca.firebaseapp.com`, `streaks-b1dca.web.app` and
-your Vercel domain; Sign-in method shows Email/Password as Enabled.
+your Vercel domain; Sign-in method shows Email/Password and Google as Enabled.
 
 ## 6. First deploy
 

@@ -1,4 +1,4 @@
-import { catchUpUser, ensureProfileFor, optionalString } from "@streaks/core";
+import { catchUpUser, ensureProfileFor, nameFromClaims, optionalString } from "@streaks/core";
 import { authedRoute } from "@/server/route";
 
 // Runs on the Node.js runtime (the only one cacheComponents allows; the Admin SDK needs it).
@@ -12,7 +12,7 @@ import { authedRoute } from "@/server/route";
 export const POST = authedRoute(async ({ uid, token, body }) => {
   const name = optionalString(body, "name", 200);
   const timezone = optionalString(body, "timezone", 64);
-  const fallbackName = (token.name as string | undefined) ?? token.email?.split("@")[0] ?? "";
+  const fallbackName = nameFromClaims(token.name, token.email);
   const now = new Date();
   const result = await ensureProfileFor(uid, { name, timezone }, now, fallbackName);
   if (!result.created) await catchUpUser(uid, now);

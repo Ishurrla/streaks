@@ -17,6 +17,16 @@ function cleanName(name: unknown, fallback: string): string {
 }
 
 /**
+ * The name to use when the client sends none, as with Google sign-in: the first name from
+ * the token's name claim, else the part of the email before the @.
+ */
+export function nameFromClaims(name: unknown, email: unknown): string {
+  const first = typeof name === "string" ? name.trim().split(/\s+/)[0] : "";
+  if (first) return first;
+  return typeof email === "string" ? (email.split("@")[0] ?? "") : "";
+}
+
+/**
  * Creates `users/{uid}` if it does not exist yet. Calling it again is a no-op, so the
  * client can call it after every sign-in. `name` and `timezone` are only used on
  * creation; after that, name changes go through the client and timezone through

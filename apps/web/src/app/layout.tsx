@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans, Google_Sans } from "next/font/google";
 import { themeScript } from "@/lib/theme";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -13,6 +13,14 @@ const bricolage = Bricolage_Grotesque({
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
+});
+
+// Only the Google sign-in button uses this, as Google's branding guidelines ask.
+const googleSans = Google_Sans({
+  subsets: ["latin"],
+  weight: "500",
+  variable: "--font-google-sans",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -32,7 +40,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // The inline script may set data-theme before React hydrates.
-    <html lang="en" className={`${bricolage.variable} ${dmSans.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${bricolage.variable} ${dmSans.variable} ${googleSans.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

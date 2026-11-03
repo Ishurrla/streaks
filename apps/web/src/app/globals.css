@@ -14,6 +14,11 @@
   --flame-soft: #ffe9d3;
   --done-soft: #dcf2e8;
   --danger: #b93a27;
+  --danger-soft: #fbe7e3;
+  /* Google's sign-in button colours, from its branding guidelines. */
+  --google-fill: #ffffff;
+  --google-stroke: #747775;
+  --google-text: #1f1f1f;
   --shadow: 0 1px 2px rgba(18, 32, 28, 0.06), 0 8px 24px rgba(18, 32, 28, 0.07);
   color-scheme: light;
 }
@@ -31,6 +36,10 @@
     --flame-soft: #3b2a17;
     --done-soft: #17392d;
     --danger: #ff8672;
+    --danger-soft: #3a1f1a;
+    --google-fill: #131314;
+    --google-stroke: #8e918f;
+    --google-text: #e3e3e3;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -48,6 +57,10 @@
   --flame-soft: #3b2a17;
   --done-soft: #17392d;
   --danger: #ff8672;
+  --danger-soft: #3a1f1a;
+  --google-fill: #131314;
+  --google-stroke: #8e918f;
+  --google-text: #e3e3e3;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -505,6 +518,156 @@
     box-shadow: var(--shadow);
   }
 
+  /* Google sign-in button: Google's colours, font, logo and padding (12, 10 and 12px). */
+  .google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--google-stroke);
+    background: var(--google-fill);
+    color: var(--google-text);
+    font-family: var(--font-google-sans), var(--font-dm-sans), system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    transition: transform 0.12s;
+  }
+  .google-btn:active {
+    transform: scale(0.985);
+  }
+  .google-btn:disabled {
+    opacity: 0.75;
+    cursor: progress;
+  }
+  .google-btn svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+    flex: none;
+  }
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 16px 0 4px;
+  }
+  .or-divider::before,
+  .or-divider::after {
+    content: "";
+    height: 1px;
+    background: var(--line);
+    flex: 1;
+  }
+
+  /* Messages on the sign-in screens and in Settings. */
+  .note {
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    font-size: 14px;
+    animation: note-rise 0.3s ease-out;
+  }
+  .note-info {
+    background: var(--done-soft);
+  }
+  .note-error {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .note b {
+    display: block;
+    margin-bottom: 2px;
+  }
+  .note-action {
+    color: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    margin-top: 6px;
+  }
+
+  /* Welcome tick after signing in with Google. */
+  .welcome {
+    text-align: center;
+    padding: 16px 4px;
+  }
+  .welcome-ring {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: grid;
+    place-items: center;
+    animation: welcome-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .welcome-ring svg {
+    width: 42px;
+    height: 42px;
+  }
+  .welcome-ring path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 0.4s 0.2s ease-out forwards;
+  }
+  .welcome-bar {
+    height: 6px;
+    max-width: 220px;
+    margin: 18px auto 0;
+    border-radius: 99px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .welcome-bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    animation: welcome-fill 2.2s linear forwards;
+  }
+
+  /* Settings: one row per sign-in method. */
+  .method {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+  .method-meta {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+  .method-title {
+    font-weight: 700;
+  }
+  .method-detail {
+    font-size: 13px;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .btn-small {
+    flex: none;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
   /* Confetti layer. */
   .fx {
     position: fixed;
@@ -521,6 +684,27 @@
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes note-rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+@keyframes welcome-pop {
+  from {
+    transform: scale(0.5);
+  }
+}
+@keyframes welcome-fill {
+  to {
+    width: 100%;
+  }
+}
 @keyframes flicker {
   0%,
   100% {
@@ -621,5 +805,12 @@
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+  /* The end state of the welcome tick, which these animations would otherwise reach. */
+  .welcome-ring path {
+    stroke-dashoffset: 0;
+  }
+  .welcome-bar i {
+    width: 100%;
   }
 }

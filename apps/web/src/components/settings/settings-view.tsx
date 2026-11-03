@@ -3,15 +3,17 @@
 import { doc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { FirebaseError } from "firebase/app";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { PageHead } from "@/components/views/page-head";
+import { SignInMethodsSection } from "@/components/settings/sign-in-methods";
 import { callApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { callUpdateTimezone } from "@/lib/data";
 import { db, realPushAvailable } from "@/lib/firebase";
 import { deviceToken, disablePushOnThisDevice, enablePushOnThisDevice, PushBlockedError, pushSupport, type PushSupport } from "@/lib/push";
 import { useProfile } from "@/lib/profile";
+import { googleSettingsError, isGoogleOnly, PASSWORD_PROVIDER } from "@/lib/sign-in";
 import { applyTheme } from "@/lib/theme";
 import type { Profile, Theme } from "@/lib/types";
 
@@ -57,7 +59,15 @@ export function SettingsView() {
   const toast = useToast();
   const { state, logOut, sendPasswordReset, deleteAccount } = useAuth();
   const router = useRouter();
-  const email = state.status === "signedIn" ? state.user.email : null;
+  const user = state.status === "signedIn" ? state.user : null;
+  const email = user?.email ?? null;
+  // Linking and unlinking change the user object in place, without an auth event.
+  const [providers, setProviders] = useState(() => user?.providerData.map((p) => p.providerId) ?? []);
+  const refreshProviders = useCallback(() => setProviders(user?.providerData.map((p) => p.providerId) ?? []), [user]);
+  useEffect(() => {
+    // Another device may have changed them; what is cached above is still right if this fails.
+    user?.reload().then(refreshProviders, () => undefined);
+  }, [user, refreshProviders]);
   const userRef = doc(db, "users", profile.uid);
 
   // Writes only the fields the rules allow the client to change.
@@ -118,8 +128,12 @@ export function SettingsView() {
         </div>
       </Section>
 
+      {user && <SignInMethodsSection user={user} providers={providers} onChanged={refreshProviders} />}
+
       <AccountSection
         email={email}
+        hasPassword={providers.includes(PASSWORD_PROVIDER)}
+        googleOnly={isGoogleOnly(providers)}
         onReset={async () => {
           if (!email) return;
           try {
@@ -252,14 +266,18 @@ function TimezoneSection({ timezone }: { timezone: string }) {
 
 function AccountSection({
   email,
+  hasPassword,
+  googleOnly,
   onReset,
   onLogOut,
   onDelete,
 }: {
   email: string | null;
+  hasPassword: boolean;
+  googleOnly: boolean;
   onReset: () => void;
   onLogOut: () => void;
-  onDelete: (password: string) => Promise<void>;
+  onDelete: (password: string | null) => Promise<void>;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [password, setPassword] = useState("");
@@ -268,14 +286,15 @@ function AccountSection({
 
   async function confirmDelete(e: FormEvent) {
     e.preventDefault();
-    if (!password) return setError("Enter your password to confirm.");
+    if (!googleOnly && !password) return setError("Enter your password to confirm.");
     setBusy(true);
     setError(null);
     try {
-      await onDelete(password);
+      await onDelete(googleOnly ? null : password);
     } catch (err) {
       setBusy(false);
       const code = err instanceof FirebaseError ? err.code : "";
+      if (googleOnly && code) return setError(googleSettingsError(code));
       setError(
         code === "auth/invalid-credential" || code === "auth/wrong-password"
           ? "That password is not right."
@@ -289,9 +308,11 @@ function AccountSection({
   return (
     <Section title="Account">
       <div className="mt-1.5 flex flex-col gap-2.5">
-        <button className="btn btn-ghost" type="button" onClick={onReset} disabled={!email}>
-          Email me a password reset link
-        </button>
+        {hasPassword && (
+          <button className="btn btn-ghost" type="button" onClick={onReset} disabled={!email}>
+            Email me a password reset link
+          </button>
+        )}
         <button className="btn btn-ghost" type="button" onClick={onLogOut}>
           Log out
         </button>
@@ -300,20 +321,26 @@ function AccountSection({
             <p className="mt-2 font-medium" role="alert">
               Delete your account and every habit and check-in? This cannot be undone.
             </p>
-            <label className="field-label" htmlFor="delete-password">
-              Enter your password to confirm
-            </label>
-            <input
-              id="delete-password"
-              className="input"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "delete-password-error" : undefined}
-            />
+            {googleOnly ? (
+              <p className="mt-2 text-sm text-muted">Google will ask you to confirm it is you.</p>
+            ) : (
+              <>
+                <label className="field-label" htmlFor="delete-password">
+                  Enter your password to confirm
+                </label>
+                <input
+                  id="delete-password"
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "delete-password-error" : undefined}
+                />
+              </>
+            )}
             {error && (
               <div id="delete-password-error" className="err">
                 {error}

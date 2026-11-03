@@ -26,6 +26,13 @@ export async function clearFirestore(): Promise<void> {
   if (!res.ok) throw new Error(`Failed to clear Firestore emulator: ${res.status}`);
 }
 
+/** Deletes every user in the Auth emulator, for tests that depend on which accounts exist. */
+export async function clearAuth(): Promise<void> {
+  const host = requireEnv("FIREBASE_AUTH_EMULATOR_HOST");
+  const res = await fetch(`http://${host}/emulator/v1/projects/${emulatorProjectId()}/accounts`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to clear Auth emulator: ${res.status}`);
+}
+
 export interface TestUser {
   uid: string;
   email: string;
@@ -45,6 +52,36 @@ export async function signUpUser(
   if (!res.ok) throw new Error(`Auth emulator sign-up failed: ${res.status} ${await res.text()}`);
   const data = (await res.json()) as { localId: string; idToken: string };
   return { uid: data.localId, email, idToken: data.idToken };
+}
+
+export interface GoogleProfile {
+  /** Google's stable ID for the account. */
+  sub: string;
+  email?: string;
+  name?: string;
+  emailVerified?: boolean;
+}
+
+/** The fake Google ID token the Auth emulator accepts. No real Google credentials are involved. */
+export function fakeGoogleIdToken({ sub, email, name, emailVerified = true }: GoogleProfile): string {
+  return JSON.stringify({ sub, email, name, email_verified: emailVerified });
+}
+
+/** Signs in through the Auth emulator's Google provider and returns a real ID token for that user. */
+export async function signInWithGoogle(profile: GoogleProfile): Promise<TestUser> {
+  const host = requireEnv("FIREBASE_AUTH_EMULATOR_HOST");
+  const res = await fetch(`http://${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=demo-key`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      requestUri: "http://localhost",
+      returnSecureToken: true,
+      postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeGoogleIdToken(profile))}`,
+    }),
+  });
+  if (!res.ok) throw new Error(`Auth emulator Google sign-in failed: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as { localId: string; idToken: string };
+  return { uid: data.localId, email: profile.email ?? "", idToken: data.idToken };
 }
 
 export async function seedUser(uid: string, fields: Record<string, unknown> = {}) {
