@@ -21,6 +21,13 @@ service cloud.firestore {
       return v is string && v.size() >= 1 && v.size() <= 40;
     }
 
+    // 1 to 7 different weekdays, 0 = Monday to 6 = Sunday.
+    function validDays(v) {
+      return v is list && v.size() >= 1 && v.size() <= 7
+        && v.toSet().size() == v.size()
+        && v.toSet().hasOnly([0, 1, 2, 3, 4, 5, 6]);
+    }
+
     function validColor(v) {
       return v in ['#13795B', '#3B6FD8', '#C2569A', '#D17F00', '#7A5BD6'];
     }
@@ -52,11 +59,14 @@ service cloud.firestore {
       match /habits/{habitId} {
         allow read: if isOwner(uid);
 
-        // New habits start with zeroed, server-owned stats.
+        // New habits start with zeroed, server-owned stats. `days` may be chosen here (left
+        // out means every day) and `milestonesEarned` may only start empty; both are optional
+        // so an older copy of the app can still add habits.
         allow create: if isOwner(uid)
           && exists(/databases/$(database)/documents/users/$(uid))
           && request.resource.data.keys().hasOnly(
-               ['name', 'color', 'createdAt', 'currentStreak', 'bestStreak', 'lastCheckInDate'])
+               ['name', 'color', 'createdAt', 'currentStreak', 'bestStreak', 'lastCheckInDate',
+                'days', 'milestonesEarned'])
           && request.resource.data.keys().hasAll(
                ['name', 'color', 'createdAt', 'currentStreak', 'bestStreak', 'lastCheckInDate'])
           && validHabitName(request.resource.data.name)
@@ -64,8 +74,14 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && request.resource.data.currentStreak == 0
           && request.resource.data.bestStreak == 0
-          && request.resource.data.lastCheckInDate == null;
+          && request.resource.data.lastCheckInDate == null
+          && (!('days' in request.resource.data) || validDays(request.resource.data.days))
+          && (!('milestonesEarned' in request.resource.data) || request.resource.data.milestonesEarned == []);
 
+        // Only the name and colour. Everything else is server-owned: the stats
+        // (`currentStreak`, `bestStreak`, `lastCheckInDate`), `milestonesEarned`, and the
+        // schedule after creation (`days`, `nextDays`, `nextDaysFrom`, `pastDays`), which
+        // changes only through /api/update-habit-days so a change always starts tomorrow.
         allow update: if isOwner(uid)
           && changedKeys().hasOnly(['name', 'color'])
           && validHabitName(request.resource.data.name)

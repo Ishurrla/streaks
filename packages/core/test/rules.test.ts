@@ -47,6 +47,11 @@ const habitDoc = {
   currentStreak: 3,
   bestStreak: 5,
   lastCheckInDate: "2026-10-28",
+  days: [0, 2, 4],
+  nextDays: null,
+  nextDaysFrom: null,
+  pastDays: [],
+  milestonesEarned: [3],
 };
 
 const newHabit = () => ({
@@ -182,6 +187,42 @@ describe("habits", () => {
     await assertSucceeds(
       updateDoc(doc(alice(), "users", ALICE, "habits", "h1"), { name: "Read 20 pages", color: "#C2569A" }),
     );
+  });
+
+  it("allows choosing days and an empty milestones list when creating a habit", async () => {
+    const ref = doc(alice(), "users", ALICE, "habits", "new");
+    await assertSucceeds(setDoc(ref, { ...newHabit(), days: [0, 2, 4], milestonesEarned: [] }));
+    await assertSucceeds(setDoc(doc(alice(), "users", ALICE, "habits", "all"), { ...newHabit(), days: [6, 5, 4, 3, 2, 1, 0] }));
+  });
+
+  it("rejects invalid days, earned milestones and pending schedules on a new habit", async () => {
+    const ref = doc(alice(), "users", ALICE, "habits", "new");
+    for (const days of [[], [7], [-1], [1, 1], ["mon"], [0, 1, 2, 3, 4, 5, 6, 0], "0,2,4", 3]) {
+      await assertFails(setDoc(ref, { ...newHabit(), days }));
+    }
+    await assertFails(setDoc(ref, { ...newHabit(), milestonesEarned: [3] }));
+    await assertFails(setDoc(ref, { ...newHabit(), milestonesEarned: [3, 7, 14] }));
+    await assertFails(setDoc(ref, { ...newHabit(), nextDays: [5, 6] }));
+    await assertFails(setDoc(ref, { ...newHabit(), nextDaysFrom: "2026-10-29" }));
+    await assertFails(setDoc(ref, { ...newHabit(), pastDays: [] }));
+  });
+
+  it("blocks every schedule and milestone field after creation", async () => {
+    const ref = doc(alice(), "users", ALICE, "habits", "h1");
+    await assertFails(updateDoc(ref, { days: [5, 6] }));
+    await assertFails(updateDoc(ref, { days: [0, 1, 2, 3, 4, 5, 6] }));
+    await assertFails(updateDoc(ref, { nextDays: [5, 6] }));
+    await assertFails(updateDoc(ref, { nextDaysFrom: "2026-10-28" }));
+    await assertFails(updateDoc(ref, { nextDays: [5, 6], nextDaysFrom: "2026-10-28" }));
+    await assertFails(updateDoc(ref, { pastDays: [{ until: "2026-10-01", days: [6] }] }));
+    // (Writing a field's current value back is allowed: it changes nothing.)
+    await assertFails(updateDoc(ref, { milestonesEarned: [3, 7, 14, 30, 60, 100, 365] }));
+    await assertFails(updateDoc(ref, { milestonesEarned: [] }));
+    // Alongside an allowed rename, still rejected.
+    await assertFails(updateDoc(ref, { name: "Renamed", days: [5, 6] }));
+    await assertFails(updateDoc(ref, { name: "Renamed", milestonesEarned: [365] }));
+    // Nor by another user.
+    await assertFails(updateDoc(doc(bob(), "users", ALICE, "habits", "h1"), { days: [5, 6] }));
   });
 
   it("blocks updates to stats and createdAt", async () => {
