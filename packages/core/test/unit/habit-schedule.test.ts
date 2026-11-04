@@ -119,7 +119,7 @@ describe("changeDays", () => {
     expect(describeDays([0, 1, 2, 3, 4, 5, 6])).toBe("Every day");
     expect(describeDays([4, 3, 2, 1, 0])).toBe("Weekdays");
     expect(describeDays([6, 5])).toBe("Weekends");
-    expect(describeDays([4, 0, 2])).toBe("Mon, Wed, Fri");
+    expect(describeDays([4, 0, 2])).toBe("Mon · Wed · Fri");
   });
 });
 

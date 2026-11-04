@@ -15,6 +15,17 @@ export const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as co
 /** Streak lengths that earn a badge, the first time a habit's streak reaches them. */
 export const MILESTONES: readonly number[] = [3, 7, 14, 30, 60, 100, 365];
 
+/** What each milestone's badge is called. */
+export const MILESTONE_NAMES: Readonly<Record<number, string>> = {
+  3: "First spark",
+  7: "One week",
+  14: "Two weeks",
+  30: "One month",
+  60: "Two months",
+  100: "Hundred club",
+  365: "Full year",
+};
+
 /** A schedule that was in force up to and including `until`, before a later change. */
 export interface PastDays {
   until: string;
@@ -119,14 +130,14 @@ export function changeDays(habit: HabitSchedule, days: readonly number[], today:
   return { ...current, nextDays: normaliseDays(days), nextDaysFrom: addDays(today, 1) };
 }
 
-/** "Every day", "Weekdays", "Weekends", or "Mon, Wed, Fri". */
+/** "Every day", "Weekdays", "Weekends", or "Mon · Wed · Fri". */
 export function describeDays(days: readonly number[]): string {
   if (isEveryDay(days)) return "Every day";
   if (sameDays(days, WEEKDAYS)) return "Weekdays";
   if (sameDays(days, WEEKENDS)) return "Weekends";
   return normaliseDays(days)
     .map((d) => DAY_SHORT[d])
-    .join(", ");
+    .join(" · ");
 }
 
 /** Milestones a habit holds. Habits from before milestones existed hold every one up to their best streak. */
@@ -138,6 +149,16 @@ export function earnedMilestones(habit: { milestonesEarned?: number[] | null; be
 /** Milestones a streak of `streak` reaches that are not held yet, lowest first. */
 export function newMilestones(earned: readonly number[], streak: number): number[] {
   return MILESTONES.filter((m) => m <= streak && !earned.includes(m));
+}
+
+/** The highest milestone at or below `streak`, or 0. */
+export function previousMilestone(streak: number): number {
+  return [...MILESTONES].reverse().find((m) => m <= streak) ?? 0;
+}
+
+/** Whether the habit has a day change waiting to start after `today`. */
+export function hasPendingDays(habit: HabitSchedule, today: string): habit is HabitSchedule & { nextDays: number[]; nextDaysFrom: string } {
+  return !!habit.nextDays && !!habit.nextDaysFrom && habit.nextDaysFrom > today;
 }
 
 /** The next milestone above `streak`, or null past the last one. */
