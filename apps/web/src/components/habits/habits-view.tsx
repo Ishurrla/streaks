@@ -1,17 +1,20 @@
 "use client";
 
+import { daysOn, describeDays } from "@streaks/core/schedule";
 import { useState } from "react";
 import { PageHead } from "@/components/views/page-head";
 import { EmptyRow, ErrorCard, LoadingCards } from "@/components/views/states";
 import { useAuth } from "@/lib/auth";
 import { useHabits } from "@/lib/data";
+import { useLocalToday } from "@/lib/dates";
 import { useProfile } from "@/lib/profile";
-import { HabitSheet, type SheetState } from "./habit-sheet";
+import { HabitSheet, PendingDays, type SheetState } from "./habit-sheet";
 
 export function HabitsView() {
   const profile = useProfile();
   const { state, logOut } = useAuth();
   const habits = useHabits(profile.uid);
+  const today = useLocalToday(profile.timezone);
   const [sheet, setSheet] = useState<SheetState>(null);
   const email = state.status === "signedIn" ? state.user.email : null;
 
@@ -41,8 +44,9 @@ export function HabitsView() {
               <div className="min-w-0 flex-1">
                 <div className="font-bold [overflow-wrap:anywhere]">{h.name}</div>
                 <div className="text-sm text-muted tabular-nums">
-                  Current {h.currentStreak} · Best {h.bestStreak}
+                  Current {h.currentStreak} · Best {h.bestStreak} · {describeDays(daysOn(h, today))}
                 </div>
+                <PendingDays habit={h} today={today} />
               </div>
               <button
                 className="link"

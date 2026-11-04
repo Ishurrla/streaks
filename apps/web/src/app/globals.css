@@ -336,6 +336,275 @@
     animation: blink 1.4s infinite;
   }
 
+  /* Schedules (docs/design/schedules-milestones-prototype.html). A row holds the card
+     and its Change days button; the button sits inside the card's right padding so the
+     two never nest. */
+  .habit-row {
+    position: relative;
+  }
+  .habit-row .habit-card {
+    padding-right: 68px;
+  }
+  .iconbtn {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    translate: 0 -50%;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+  }
+  .iconbtn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .iconbtn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .card-when,
+  .pending-days {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .pending-days {
+    font-style: italic;
+  }
+  .habit-card.rest {
+    background: transparent;
+    box-shadow: none;
+    border: 1.5px dashed var(--line);
+  }
+  .habit-card.rest .check {
+    border: 2px dashed var(--line);
+    color: var(--muted);
+  }
+  .habit-card.rest .check svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Repeat picker in the habit sheet. */
+  .day-preset {
+    min-height: 44px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .day-preset[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+  }
+  .day-pills {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .day-pill {
+    min-height: 48px;
+    min-width: 0;
+    border-radius: 14px;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      transform 0.1s;
+  }
+  .day-pill small {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .day-pill:active {
+    transform: scale(0.94);
+  }
+  .day-pill[aria-pressed="true"] {
+    background: var(--hc);
+    border-color: var(--hc);
+    color: #fff;
+  }
+  .day-pill[aria-pressed="true"] small {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  /* Milestones panel on Progress. */
+  .milestone-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--line);
+    overflow: hidden;
+    margin: 8px 0 6px;
+  }
+  .milestone-bar i {
+    display: block;
+    height: 100%;
+    background: var(--flame);
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .badges {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+  .medal {
+    width: 100%;
+    max-width: 68px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    position: relative;
+  }
+  .badge.on .medal {
+    background: var(--flame-soft);
+    border: 3px solid var(--flame);
+    color: var(--flame);
+  }
+  .badge.off .medal {
+    border: 2px dashed var(--line);
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .badge.off .medal svg {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 20px;
+    height: 20px;
+    background: var(--surface);
+    border-radius: 50%;
+    padding: 3px;
+  }
+  .badge > span {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  .badge.on > span {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .badge.fresh .medal {
+    animation: medalin 0.7s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+
+  /* Five-week calendar on Progress. Missed days are soft, not alarming. */
+  .cal-day {
+    margin: 0 auto;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    border: 2px solid transparent;
+  }
+  @media (min-width: 900px) {
+    .cal-day {
+      max-width: 52px;
+    }
+  }
+  .cal-day.done {
+    background: var(--hc);
+    color: #fff;
+    font-weight: 700;
+  }
+  .cal-day.miss {
+    background: color-mix(in srgb, var(--line) 75%, transparent);
+  }
+  .cal-day.rest {
+    border: 1.5px dashed var(--line);
+  }
+  .cal-day.frozen {
+    border: 2px dashed var(--hc);
+  }
+  .cal-day.today {
+    box-shadow: 0 0 0 2px var(--ink);
+  }
+  .cal-day.future {
+    opacity: 0.35;
+  }
+  .cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .cal-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cal-legend .cal-day {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+  .cal-legend .cal-day.rest {
+    border-color: var(--muted);
+  }
+
+  /* Milestone celebration: the all-done card with a medal in place of the flame. */
+  .bigmedal {
+    width: 112px;
+    height: 112px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--flame-soft);
+    border: 5px solid var(--flame);
+    display: grid;
+    place-items: center;
+    color: var(--flame);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 44px;
+    position: relative;
+    animation: rise 0.8s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .bigmedal svg {
+    position: absolute;
+    top: -16px;
+    right: -12px;
+    width: 38px;
+    height: 38px;
+  }
+
   /* Check-off animation: glow, ripple, tick draw, pop, streak bump. */
   .habit-card.pop {
     animation: flash 0.75s ease-out;
@@ -929,6 +1198,12 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+@keyframes medalin {
+  from {
+    transform: scale(0.3) rotate(-30deg);
+    opacity: 0;
   }
 }
 @keyframes celebin {
