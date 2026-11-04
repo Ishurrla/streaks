@@ -3,6 +3,7 @@ import type { BatchResponse, MulticastMessage } from "firebase-admin/messaging";
 import { DateTime } from "luxon";
 import { db } from "./admin";
 import { log } from "./log";
+import { scheduledOn, type HabitSchedule } from "./schedule";
 import { localDate } from "./time";
 
 /** The part of the Admin SDK's Messaging that runReminders needs; tests pass a fake. */
@@ -130,8 +131,11 @@ export async function remindUser(uid: string, now: Date, sender: Sender, appUrl?
       tx.get(userRef.collection("habits")),
       tx.get(userRef.collection("pushTokens")),
     ]);
-    // lastCheckInDate is server-owned and kept exact by checkIn, undoCheckIn and rollover.
-    const unchecked = habits.docs.filter((h) => h.get("lastCheckInDate") !== today);
+    // Only habits due today count: one resting today has nothing to check off. lastCheckInDate
+    // is server-owned and kept exact by checkIn, undoCheckIn and rollover.
+    const unchecked = habits.docs.filter(
+      (h) => scheduledOn(h.data() as HabitSchedule, today) && h.get("lastCheckInDate") !== today,
+    );
     // Nothing to do today: look again tomorrow rather than every 15 minutes.
     if (unchecked.length === 0 || tokens.empty) return reschedule({ skipToday: true });
 

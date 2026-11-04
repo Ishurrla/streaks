@@ -51,8 +51,14 @@ async function seedReminderUser(uid: string, fields: Record<string, unknown> = {
   );
 }
 
-async function seedHabitState(uid: string, id: string, currentStreak: number, lastCheckInDate: string | null) {
-  const ref = await seedHabit(uid, id);
+async function seedHabitState(
+  uid: string,
+  id: string,
+  currentStreak: number,
+  lastCheckInDate: string | null,
+  fields: Record<string, unknown> = {},
+) {
+  const ref = await seedHabit(uid, id, [], [], fields);
   await ref.update({ currentStreak, bestStreak: currentStreak, lastCheckInDate });
 }
 
@@ -155,6 +161,42 @@ describe("runReminders", () => {
     const { sender, sent } = fakeSender();
 
     expect(await runReminders(NOW, sender)).toEqual({ sent: 0, skipped: 2, failed: 0, done: true });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("sends nothing on a day when every unchecked habit is resting, and looks again tomorrow", async () => {
+    // The 28th is a Wednesday. Weekend-only and Mon/Fri habits rest; the daily one is done.
+    await seedReminderUser("u");
+    await seedHabitState("u", "weekend", 4, "2026-10-25", { days: [5, 6] });
+    await seedHabitState("u", "monfri", 2, "2026-10-26", { days: [0, 4] });
+    await seedHabitState("u", "daily", 5, "2026-10-28");
+    const { sender, sent } = fakeSender();
+
+    expect(await runReminders(NOW, sender)).toEqual({ sent: 0, skipped: 1, failed: 0, done: true });
+    expect(sent).toHaveLength(0);
+    const user = await userData("u");
+    expect(user.lastReminderDate).toBeNull();
+    expect(user.nextReminderAt.toDate()).toEqual(new Date("2026-10-29T19:00:00Z"));
+  });
+
+  it("counts only the habits due today", async () => {
+    await seedReminderUser("u");
+    await seedHabitState("u", "weekend", 20, "2026-10-25", { days: [5, 6] }); // resting, not counted
+    await seedHabitState("u", "wed", 3, "2026-10-21", { days: [2] }); // due today
+    const { sender, sent } = fakeSender();
+
+    await runReminders(NOW, sender);
+
+    expect(sent[0]!.notification?.body).toBe("1 habit left today. Keep your 3 day streak alive.");
+  });
+
+  it("follows a pending day change only from its start date", async () => {
+    // Changed yesterday to weekends from today: resting today, so no reminder.
+    await seedReminderUser("u");
+    await seedHabitState("u", "h", 1, "2026-10-27", { nextDays: [5, 6], nextDaysFrom: "2026-10-28" });
+    const { sender, sent } = fakeSender();
+
+    await runReminders(NOW, sender);
     expect(sent).toHaveLength(0);
   });
 
