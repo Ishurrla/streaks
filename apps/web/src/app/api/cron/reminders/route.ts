@@ -7,7 +7,7 @@ import { cronRoute } from "@/server/cron";
 /**
  * Sends today's push reminder to every user whose nextReminderAt has passed. At most once
  * a day per user (lastReminderDate). FCM is not emulated, so with the emulators the
- * message is logged instead of sent. Called every 15 minutes by .github/workflows/cron.yml.
+ * message is logged instead of sent. Called every 15 minutes by cron-job.org, with .github/workflows/cron.yml as a backup.
  */
 export const POST = cronRoute("reminders", ({ now, deadline, origin }) =>
   runReminders(now, usingEmulators() ? loggingSender : messaging(), {

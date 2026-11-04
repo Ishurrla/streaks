@@ -7,7 +7,8 @@ Auth, Firestore and Cloud Messaging; the server logic runs in Next.js route hand
 - `packages/core` (`@streaks/core`): the server logic the routes call (streaks, check-ins, rollover,
   reminders, accounts), its tests, and the Firestore rules tests
 - `firestore.rules`, `firestore.indexes.json`: security rules (default deny, field-level validation)
-- `.github/workflows/cron.yml`: calls the two cron endpoints every 15 minutes
+- `.github/workflows/cron.yml`: a backup caller for the two cron endpoints (cron-job.org is the
+  main scheduler; see "Cron")
 - `docs/PROJECT_BRIEF.md`: the brief; `docs/DEPLOYMENT.md`: how to deploy
 
 ## Requirements
@@ -110,11 +111,24 @@ Firestore, all under `users/{uid}` (`docs/PROJECT_BRIEF.md` has the full list):
 
 ## Cron
 
-Two jobs run every 15 minutes, called by `.github/workflows/cron.yml` (GitHub Actions) with
-`Authorization: Bearer <CRON_SECRET>`:
+Two jobs run every 15 minutes. **cron-job.org** is the main scheduler: two jobs there send `POST`
+with the header `Authorization: Bearer <CRON_SECRET>`, one to each endpoint:
 
 - `POST /api/cron/rollover` closes the day for everyone whose local midnight has passed.
 - `POST /api/cron/reminders` sends push reminders to users whose `nextReminderAt` has passed.
+
+`.github/workflows/cron.yml` (GitHub Actions) calls the same two endpoints the same way, as a
+**backup** only: GitHub throttles and delays scheduled runs, so it cannot be relied on for timing. It
+can stay enabled alongside cron-job.org, and you can also start it by hand. Two schedulers do no harm:
+both jobs are idempotent, and each reminder is claimed in a transaction before it is sent, so nobody
+gets two.
+
+`CRON_SECRET` lives in four places, and they must all hold the same value:
+- Vercel (then Redeploy);
+- the GitHub repository secret;
+- the `Authorization` header of each of the two cron-job.org jobs.
+
+If you change it, change all four. Never put the value in git or in these docs.
 
 A missing or wrong secret gets 401 (compared in constant time). Both jobs are idempotent, stop
 starting new pages after about 7 seconds, and leave anything unfinished for the next run. The app also
@@ -128,9 +142,12 @@ job only counts habits due today.
 **Is the cron running?** After each completed run the endpoint writes `cron/rollover` and
 `cron/reminders` in Firestore with `lastSuccessfulRun`, `lastResult` and `lastDurationMs`. Look at
 them in the Firebase console (Firestore Database > `cron`). If `lastSuccessfulRun` is more than about
-an hour old, the GitHub schedule has stalled: check the repo's Actions tab. GitHub delays scheduled
-runs under load, and turns schedules off after 60 days without activity in the repo; re-enable the
-workflow there, or start a run by hand with "Run workflow".
+an hour old, the scheduling has stalled.
+- Check the two jobs' execution history on cron-job.org: a 401 means the secret in a job's header no
+  longer matches Vercel.
+- Meanwhile, start the GitHub backup by hand: repo > Actions > cron > "Run workflow".
+- GitHub also turns schedules off after 60 days without activity in the repo; re-enable the workflow
+  there if you rely on the backup.
 
 Locally, with `pnpm dev` running and any `CRON_SECRET` in `apps/web/.env.local`:
 
@@ -248,11 +265,12 @@ deployed.
      open Streaks from the Home Screen icon. iOS only allows web push for Home Screen apps.
 2. Sign in, add a habit, and turn on reminders in Settings. Allow notifications.
 3. Set "Remind me at" to a few minutes from now and leave a habit unchecked.
-4. Wait for the next scheduled run, or GitHub > Actions > cron > **Run workflow**. Tapping the
+4. Wait for the next scheduled run. Or start the reminders job by hand: on cron-job.org, run it
+   now. On GitHub, use Actions > cron > **Run workflow**. Tapping the
    notification opens Today.
 5. Each day sends at most one reminder. To test again the same day: in the Firestore console delete
    `lastReminderDate` on your `users/{uid}` document, then change "Remind me at" in Settings (which
-   reschedules today's reminder) and run the workflow again.
+   reschedules today's reminder) and run the reminders job again.
 
 If nothing arrives, check `cron/reminders.lastResult` in Firestore (`sent`, `skipped`, `failed`), the
 function logs in Vercel (search for "Cron reminders finished"), and that `users/{uid}/pushTokens` has a

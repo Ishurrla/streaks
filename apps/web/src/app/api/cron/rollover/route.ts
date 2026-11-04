@@ -7,6 +7,6 @@ import { cronRoute } from "@/server/cron";
 /**
  * Closes the day for every user whose local midnight has passed (freezes, broken
  * streaks, next midnight). Idempotent through nextRolloverAt, so overlapping or repeated
- * runs change nothing twice. Called every 15 minutes by .github/workflows/cron.yml.
+ * runs change nothing twice. Called every 15 minutes by cron-job.org, with .github/workflows/cron.yml as a backup.
  */
 export const POST = cronRoute("rollover", ({ now, deadline }) => runRollover(now, { pageSize: 25, deadline }));

@@ -1,3 +1,7 @@
+# BACKUP scheduler. cron-job.org is the main one: two jobs there POST to the same endpoints
+# every 15 minutes with "Authorization: Bearer <CRON_SECRET>". GitHub throttles and delays
+# scheduled runs, so this only covers for cron-job.org and can be started by hand.
+#
 # Calls the app's cron endpoints every 15 minutes: the nightly rollover (each user's day
 # ends at their own midnight) and push reminders. Both are idempotent and process users
 # within a time budget, so a late, repeated or partial run is harmless; the next run, or a
@@ -5,11 +9,11 @@
 #
 # Needs two repository secrets (Settings > Secrets and variables > Actions):
 #   APP_URL      the production URL, e.g. https://streaks.vercel.app (no trailing slash)
-#   CRON_SECRET  the same value as CRON_SECRET in Vercel
+#   CRON_SECRET  the same value as CRON_SECRET in Vercel and in both cron-job.org headers
 #
 # GitHub may delay scheduled runs, and turns schedules off after 60 days without repo
 # activity. cron/{rollover,reminders}.lastSuccessfulRun in Firestore shows the last run;
-# see "Cron" in the README and step 7 of docs/DEPLOYMENT.md.
+# see "Cron" in the README and steps 7 and 8 of docs/DEPLOYMENT.md.
 name: cron
 
 on:

@@ -1,8 +1,9 @@
 # Deploying Streaks (Spark plan)
 
 Firebase (free Spark plan) provides Auth, Firestore and Cloud Messaging. Vercel hosts the Next.js
-app and its `/api` routes, which hold all the server logic. GitHub Actions calls the two cron
-endpoints every 15 minutes. Nothing here needs Cloud Functions, Cloud Scheduler or billing.
+app and its `/api` routes, which hold all the server logic. cron-job.org calls the two cron
+endpoints every 15 minutes; a GitHub Actions workflow does the same as a backup only, because GitHub
+throttles scheduled runs. Nothing here needs Cloud Functions, Cloud Scheduler or billing.
 
 Do the steps in order and check each one before moving on. The project is `streaks-b1dca`, aliased
 `prod` in `.firebaserc`. Run commands from the repo root. `pnpm exec firebase` uses the CLI version
@@ -72,9 +73,10 @@ and `project_id` is `streaks-b1dca`.
 
 ## 4. Set the env vars on Vercel and the GitHub secrets
 
-**4a. Push the repo to GitHub.** Use a **public** repository: GitHub Actions minutes are unlimited
-there. A private repo gets 2,000 minutes a month on the free plan, and a run every 15 minutes uses about
-2,900. Nothing secret is in git: env files are ignored, and secrets live only in Vercel and GitHub.
+**4a. Push the repo to GitHub.** Use a **public** repository, so the backup cron workflow's Actions
+minutes are unlimited. A private repo gets 2,000 minutes a month on the free plan, and a run every 15 minutes uses about
+2,900. Nothing secret is in git: env files are ignored, and secrets live only in Vercel, GitHub and
+the cron-job.org job headers.
 
 ```sh
 gh repo create streaks --public --source=. --remote=origin --push
@@ -89,7 +91,7 @@ gh workflow list --all
 - If **cron** is listed, its schedule has started and would fail until the app is deployed. Turn it
   off straight away: GitHub > **Actions** > **cron** > "…" menu > **Disable workflow**.
 - If nothing is listed, GitHub missed the workflow in the repo's first push. This has happened here,
-  and nothing runs until it is registered. Leave it for now; step 7 fixes it.
+  and nothing runs until it is registered. Leave it for now; step 8 fixes it.
 
 **4b. Make a cron secret.** Any long random string; for example:
 
@@ -97,7 +99,9 @@ gh workflow list --all
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Use a different value from the `CRON_SECRET` in your local `.env.local`.
+Use a different value from the `CRON_SECRET` in your local `.env.local`. The production value goes
+in exactly four places: Vercel (4c), the GitHub secret (4d) and the header of both cron-job.org jobs
+(step 7). Do not write it anywhere else, including these docs.
 
 **4c. Create the Vercel project, without deploying yet.** Vercel > Add New > Project > import the
 repository.
@@ -181,9 +185,35 @@ Press **Deploy** on the Vercel import screen (later deploys happen on every push
   curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<project-name>.vercel.app/api/cron/rollover
   ```
 
-## 7. Run the cron workflow by hand
+## 7. Set up the two cron-job.org jobs (the main scheduler)
 
-First get the workflow active. Either of these starts its 15-minute schedule:
+Sign in at cron-job.org and create two jobs, identical apart from the URL:
+
+| Setting | Rollover job | Reminders job |
+| --- | --- | --- |
+| URL | `https://<project-name>.vercel.app/api/cron/rollover` | `https://<project-name>.vercel.app/api/cron/reminders` |
+| Schedule | every 15 minutes | every 15 minutes |
+| Request method (Advanced) | `POST` | `POST` |
+| Header (Advanced) | `Authorization` = `Bearer <CRON_SECRET>` | `Authorization` = `Bearer <CRON_SECRET>` |
+
+Paste the real secret after `Bearer ` in each header; it is the same value as in Vercel. Leave the
+request body empty. Each run takes a few seconds: the endpoints stop starting new work after about 7.
+
+**Check:**
+- Use "Test run" or run each job once now. Both return HTTP 200, with a body like
+  `{"ok":true,"rolledOver":…,"skipped":…,"failed":…,"done":true}` or `{"ok":true,"sent":…,…}`. All
+  zeros is normal when nothing is due.
+- Firestore > Data: `cron/rollover` and `cron/reminders` have `lastSuccessfulRun` a minute ago.
+- Over the next hour each job's execution history shows a run every 15 minutes, all 200.
+- A `401` means the header does not match `CRON_SECRET` in Vercel: check for a missing `Bearer `, a
+  stray space, or an old value. A `405` means the method is still GET.
+
+## 8. Run the GitHub Actions backup by hand
+
+The workflow is a backup only: cron-job.org (step 7) does the scheduling. GitHub throttles and delays
+scheduled runs, so do not rely on it for timing. Keeping it active is harmless, since running a job
+twice changes nothing. To get the workflow active, do one of these. Either starts its 15-minute
+schedule:
 
 - If **cron** is listed as disabled: GitHub > **Actions** > **cron** > **Enable workflow**.
 - If nothing is listed: commit any change to `.github/workflows/cron.yml`, even to a comment, and push
@@ -198,10 +228,23 @@ Then **Run workflow** (branch `master`).
   when nothing is due.
 - Firestore > Data: `cron/rollover` and `cron/reminders` exist, with `lastSuccessfulRun` a minute ago
   and `lastResult` matching the output.
-- Over the next hour scheduled runs appear in the Actions tab (GitHub often starts them late) and
+- Scheduled runs appear in the Actions tab when GitHub gets to them (often late, sometimes skipped)
+  and
   `lastSuccessfulRun` keeps moving.
 - A step that fails with `401` means `CRON_SECRET` differs between GitHub and Vercel (after changing
   it in Vercel, Redeploy). A `404` or connection error means `APP_URL` is wrong.
+
+## Changing CRON_SECRET
+
+Generate a new value (step 4b), then put it in all four places before the next run:
+1. Vercel > Settings > Environment Variables > `CRON_SECRET`, then **Redeploy**. Env changes reach
+   only new deployments.
+2. GitHub > Settings > Secrets and variables > Actions > `CRON_SECRET`.
+3. On cron-job.org, the `Authorization` header of the rollover job: `Bearer <new value>`.
+4. The same header on the reminders job.
+
+Any place still holding the old value gets `401` and does nothing. That is safe but means no
+rollover or reminders from that caller. Run both cron-job.org jobs once to confirm `200`.
 
 ## Releasing a change to the rules
 
@@ -225,8 +268,9 @@ and schedule.
   is the first real rollover.
 - When updating `firebase-admin`, try removing the `jwks-rsa` override in `pnpm-workspace.yaml`. Recheck
   it before verifying App Check or phone number tokens with the Admin SDK, which do use `jwks-rsa`.
-- Watch the cron: README > "Cron" explains `lastSuccessfulRun`. GitHub turns scheduled workflows off
-  after 60 days without repo activity; re-enable it in the Actions tab if that happens.
+- Watch the cron: README > "Cron" explains `lastSuccessfulRun`. If it stalls, look at the
+  cron-job.org execution history first. The GitHub backup turns itself off after 60 days without repo
+  activity; re-enable it in the Actions tab if that happens.
 - Spark quotas are 50,000 document reads and 20,000 writes a day (Firebase console > Usage). The
   cron reads only users who are due, and records 2 small documents per run (about 200 writes a day).
 - Optional hardening: restrict the browser API key to your domains (Google Cloud console > APIs &

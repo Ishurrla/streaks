@@ -1,4 +1,5 @@
-// Calls the local cron endpoints the way GitHub Actions does, while `pnpm dev` is running.
+// Calls the local cron endpoints the way cron-job.org (and the GitHub Actions backup) do, while
+// `pnpm dev` is running.
 // Usage: pnpm cron:dev [rollover|reminders]   (both when omitted)
 // The secret comes from CRON_SECRET in the environment or apps/web/.env.local.
 import { readFileSync } from "node:fs";

@@ -34,7 +34,7 @@ export interface CronContext {
 /**
  * A POST-only cron endpoint. Without the right secret it returns 401 and does nothing.
  * After a run that completes, it records cron/{name}.lastSuccessfulRun, which the README
- * explains how to watch: GitHub can delay or disable scheduled workflows.
+ * explains how to watch. Callers: cron-job.org, with .github/workflows/cron.yml as a backup.
  */
 export function cronRoute<T extends { done: boolean }>(name: string, run: (ctx: CronContext) => Promise<T>) {
   return async (req: Request): Promise<Response> => {
