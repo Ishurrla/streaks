@@ -56,8 +56,16 @@ To run the two halves separately: `pnpm emulators` (no saved data) and `pnpm dev
 Auth emulator's own window: choose "Add new account", then "Auto-generate user information" or fill
 in a name and email. Settings > Sign-in methods and deleting a Google-only account use the same window.
 
-If the dev server ever serves stale CSS after edits, stop it and delete `apps/web/.next`
-(Next.js keeps a persistent dev cache there).
+### Troubleshooting: Local dev: styles or new components missing
+
+- **Symptom:** after pulling or switching branches, `pnpm dev` shows no styles, or a new component
+  (like the theme switch) is invisible or 0x0, even though the code is right and the live site is fine.
+- **Cause:** Turbopack's on-disk cache can go stale and serve old compiled output.
+- **Fix:** stop the dev server, delete `apps/web/.next`, then run `pnpm dev` again.
+- **Note:** `apps/web/next.config.ts` already turns off the Turbopack file-system cache for dev and
+  build (`turbopackFileSystemCacheForDev` and `turbopackFileSystemCacheForBuild` set to `false`) to
+  prevent this. If dev feels slow, those two flags can be set back to `true`, but then use the fix
+  above whenever styles look wrong.
 
 ## How the server works
 
