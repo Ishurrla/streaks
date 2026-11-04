@@ -13,7 +13,7 @@ const TABS = [
   { href: "/settings", label: "Settings", icon: GearIcon },
 ] as const;
 
-// Habits and Settings use a narrower, left-aligned column on desktop.
+// Habits and Settings use a narrower column on desktop, centred beside the sidebar.
 const NARROW = new Set(["/habits", "/settings"]);
 
 /** Bottom tab bar on mobile, left sidebar from 900px. */
@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="desk:flex desk:min-h-dvh">
       <PushListener />
       <main className="min-w-0 flex-1 px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] desk:px-10 desk:pt-9 desk:pb-12">
-        <div className={`mx-auto max-w-[560px] ${narrow ? "desk:mx-0 desk:max-w-[720px]" : "desk:max-w-[1040px]"}`}>
+        <div className={`mx-auto max-w-[560px] ${narrow ? "desk:max-w-[720px]" : "desk:max-w-[1040px]"}`}>
           {children}
         </div>
       </main>
