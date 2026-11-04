@@ -11,7 +11,7 @@ export { optionalString, requireHabitId, type Body } from "./validation";
 export { checkInFor, streaksFor, undoCheckInFor, type CheckInResult } from "./checkins";
 export * from "./schedule";
 export { ensureProfileFor, nameFromClaims, type EnsureProfileInput } from "./profile";
-export { deleteHabitFor } from "./habits";
+export { deleteHabitFor, requireDays, updateHabitDaysFor } from "./habits";
 export { updateTimezoneFor } from "./timezone";
 export { rolloverUser, runRollover, type RolloverOptions, type RolloverResult } from "./rollover";
 export {
