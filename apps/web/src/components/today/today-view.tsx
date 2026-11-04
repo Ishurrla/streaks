@@ -1,29 +1,48 @@
 "use client";
 
+import {
+  DAY_NAMES,
+  daysOn,
+  describeDays,
+  isEveryDay,
+  nextScheduledAfter,
+  scheduledOn,
+  weekdayOf,
+} from "@streaks/core/schedule";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { HabitSheet, createHabit, HABIT_IDEAS, nextColor, type SheetState } from "@/components/habits/habit-sheet";
-import { CheckIcon, Flame, LockIcon } from "@/components/icons";
+import { HabitSheet, createHabit, HABIT_IDEAS, nextColor, PendingDays, type SheetState } from "@/components/habits/habit-sheet";
+import { CalendarIcon, CheckIcon, Flame, InfoIcon, LockIcon, MoonIcon } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { ErrorCard, LoadingCards } from "@/components/views/states";
 import { ApiError } from "@/lib/api";
-import { callCheckIn, callUndoCheckIn, useCheckInDays, useHabits, type Habit } from "@/lib/data";
+import { callCheckIn, callUndoCheckIn, useCheckInDays, useHabitCache, useHabits, type Habit } from "@/lib/data";
 import { addDays, greeting, longDate, useLocalToday, weekdayShort } from "@/lib/dates";
 import { burst, rain } from "@/lib/fx";
 import { useProfile } from "@/lib/profile";
+import { MilestoneCelebration, type MilestoneHit } from "./milestone-celebration";
 
 /** What the user asked for while the server has not confirmed it yet. */
 type Pending = Record<string, { done: boolean; settled: boolean }>;
 
 const RING = 251.3; // 2πr for r = 40
 
+/** "12 day streak" for an every-day habit, "12 in a row" for one with rest days. */
+export function streakText(habit: Habit, today: string, n = habit.currentStreak): string {
+  return isEveryDay(daysOn(habit, today)) ? `${n} day streak` : `${n} in a row`;
+}
+
 export function TodayView() {
   const profile = useProfile();
   const toast = useToast();
   const today = useLocalToday(profile.timezone);
   const habits = useHabits(profile.uid);
+  const cache = useHabitCache(profile.uid);
   const list = habits.data ?? [];
+  // Which habits are due is decided by the same scheduledOn the server uses.
+  const due = list.filter((h) => scheduledOn(h, today));
+  const resting = list.filter((h) => !scheduledOn(h, today));
   const days = useCheckInDays(
     profile.uid,
     list.map((h) => h.id),
@@ -36,6 +55,7 @@ export function TodayView() {
   const [entering, setEntering] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<SheetState>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [milestone, setMilestone] = useState<MilestoneHit | null>(null);
 
   // After a move west the local date can be one the rollover already closed.
   const locked = !!profile.lastClosedDate && today <= profile.lastClosedDate;
@@ -54,9 +74,9 @@ export function TodayView() {
   }
 
   // Latest state for mutation callbacks, which run after this render.
-  const latest = useRef({ list, isDone });
+  const latest = useRef({ due, isDone });
   useEffect(() => {
-    latest.current = { list, isDone };
+    latest.current = { due, isDone };
   });
 
   const mutation = useMutation({
@@ -64,14 +84,21 @@ export function TodayView() {
       done ? callCheckIn(habit.id) : callUndoCheckIn(habit.id),
     onSuccess: (result, { habit, done }) => {
       setPending((p) => (p[habit.id] ? { ...p, [habit.id]: { done, settled: true } } : p));
-      if (!done) return;
-      const { list: all, isDone: doneNow } = latest.current;
-      if (all.length > 0 && all.every((h) => h.id === habit.id || doneNow(h.id))) {
+      cache.afterCheckIn(habit.id, result, done);
+      if (!done || !result.changed) return;
+      // A milestone is celebrated only when the server says this check-in earned it.
+      if (result.milestoneReached !== null) {
+        setMilestone({ habit, milestone: result.milestoneReached });
+        rain();
+        return;
+      }
+      const { due: dueNow, isDone: doneNow } = latest.current;
+      if (dueNow.length > 0 && dueNow.every((h) => h.id === habit.id || doneNow(h.id))) {
         setCelebrate(true);
         rain();
       } else {
         const c = result.currentStreak;
-        toast(c > 1 ? `${c} days in a row. Keep it going.` : "Day one. That is how every streak starts.");
+        toast(c > 1 ? `${streakText(habit, today, c)}. Keep it going.` : "Day one. That is how every streak starts.");
       }
     },
     onError: (error, { habit }) => {
@@ -80,10 +107,13 @@ export function TodayView() {
         delete next[habit.id];
         return next;
       });
+      const code = error instanceof ApiError ? error.code : null;
       toast(
-        error instanceof ApiError && error.code === "failed-precondition"
-          ? "That day has already closed. Check-ins open again at midnight."
-          : "Could not save that check-in. Try again.",
+        code === "NOT_SCHEDULED"
+          ? `${habit.name} rests today. Your streak is safe.`
+          : code === "failed-precondition"
+            ? "That day has already closed. Check-ins open again at midnight."
+            : "Could not save that check-in. Try again.",
       );
     },
   });
@@ -126,21 +156,24 @@ export function TodayView() {
     }
   }
 
-  const total = list.length;
-  const doneCount = list.filter((h) => isDone(h.id)).length;
+  // The ring, the counts and the all-done state are about today's due habits only.
+  const total = due.length;
+  const doneCount = due.filter((h) => isDone(h.id)).length;
   const allDone = total > 0 && doneCount === total;
-  const atRisk = (h: Habit) => !isDone(h.id) && h.currentStreak > 0;
+  const atRisk = (h: Habit) => scheduledOn(h, today) && !isDone(h.id) && h.currentStreak > 0;
   const top = list.reduce<Habit | null>((a, h) => (!a || h.currentStreak > a.currentStreak ? h : a), null);
   const topStreak = top?.currentStreak ?? 0;
 
   const subtitle =
-    total === 0
+    list.length === 0
       ? "Add your first habit to get going."
-      : allDone
-        ? "All done for today. See you tomorrow."
-        : doneCount === 0
-          ? "A fresh day. Pick one small thing to start."
-          : `${total - doneCount} to go. You are on a roll.`;
+      : total === 0
+        ? "Nothing due today. Enjoy the rest day."
+        : allDone
+          ? "All done for today. See you tomorrow."
+          : doneCount === 0
+            ? "A fresh day. Pick one small thing to start."
+            : `${total - doneCount} to go. You are on a roll.`;
 
   return (
     <>
@@ -176,9 +209,9 @@ export function TodayView() {
             days.retry();
           }}
         />
-      ) : habits.isLoading || (total > 0 && days.isLoading) ? (
+      ) : habits.isLoading || (list.length > 0 && days.isLoading) ? (
         <LoadingCards />
-      ) : total === 0 ? (
+      ) : list.length === 0 ? (
         <EmptyToday onQuickAdd={quickAdd} onWriteOwn={() => setSheet({ mode: "new" })} />
       ) : (
         <div className="grid gap-[18px] [grid-template-areas:'side''list'] desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start desk:gap-7 desk:[grid-template-areas:'list_side']">
@@ -187,7 +220,7 @@ export function TodayView() {
               <div
                 className={`progress-ring ${allDone ? "full" : ""} ${celebrate ? "pulse" : ""}`}
                 role="img"
-                aria-label={`${doneCount} of ${total} habits done today`}
+                aria-label={`${doneCount} of ${total} habits due today done`}
               >
                 <svg viewBox="0 0 96 96">
                   <circle className="track" cx="48" cy="48" r="40" fill="none" strokeWidth="10" />
@@ -200,7 +233,7 @@ export function TodayView() {
                     strokeWidth="10"
                     strokeLinecap="round"
                     strokeDasharray={RING}
-                    strokeDashoffset={RING * (1 - doneCount / total)}
+                    strokeDashoffset={RING * (1 - (total ? doneCount / total : 0))}
                   />
                 </svg>
                 <div className="absolute inset-0 grid place-items-center font-display text-2xl font-extrabold tabular-nums">
@@ -215,19 +248,29 @@ export function TodayView() {
                 {/* A long habit name wraps here instead of widening the whole Today grid. */}
                 <div className="min-w-0 [overflow-wrap:anywhere]">
                   <b className="block font-display text-xl leading-[1.1]">
-                    {topStreak > 0 ? `${topStreak} day streak` : "No streak yet"}
+                    {topStreak > 0 ? streakText(top!, today) : "No streak yet"}
                   </b>
                   <span className="text-sm text-muted">{topStreak > 0 ? top!.name : "Check one off to start"}</span>
                 </div>
               </div>
             </div>
             <WeekStrip today={today} habits={list} days={days.data ?? {}} isDone={isDone} />
+            {list.some((h) => !isEveryDay(daysOn(h, today))) && (
+              <p className="mt-3.5 flex items-start gap-2 rounded-[14px] bg-surface px-3.5 py-3 text-[13px] text-muted shadow-card">
+                <InfoIcon className="mt-px size-[18px] flex-none text-accent" />
+                <span>
+                  Streaks count scheduled days only. On a rest day the habit can&apos;t be checked in and the streak stays
+                  safe.
+                </span>
+              </p>
+            )}
           </div>
 
           <div className="[grid-area:list]">
-            <h2 className="section-title">Today</h2>
+            <h2 className="section-title">Due today</h2>
             <div className="flex flex-col gap-2.5">
-              {list.map((h) => (
+              {due.length === 0 && <p className="px-1.5 text-sm text-muted">Nothing due today. Enjoy the rest day.</p>}
+              {due.map((h) => (
                 <HabitCard
                   key={h.id}
                   habit={h}
@@ -238,9 +281,26 @@ export function TodayView() {
                   pop={popId === h.id}
                   enter={entering.has(h.id)}
                   onToggle={(e) => toggle(h, e)}
+                  onChangeDays={() => setSheet({ mode: "days", habit: h })}
                 />
               ))}
             </div>
+            {resting.length > 0 && (
+              <>
+                <h2 className="section-title mt-5!">Resting today</h2>
+                <div className="flex flex-col gap-2.5">
+                  {resting.map((h) => (
+                    <RestCard
+                      key={h.id}
+                      habit={h}
+                      today={today}
+                      onTap={() => toast(`${h.name} rests today. Your streak is safe.`)}
+                      onChangeDays={() => setSheet({ mode: "days", habit: h })}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
             <button className="btn btn-ghost mt-3.5 w-full" type="button" onClick={() => setSheet({ mode: "new" })}>
               + Add a habit
             </button>
@@ -256,7 +316,7 @@ export function TodayView() {
       <HabitSheet
         uid={profile.uid}
         state={sheet}
-        habitCount={total}
+        habitCount={list.length}
         onClose={() => setSheet(null)}
         onCreated={(id) => setEntering((s) => new Set(s).add(id))}
       />
@@ -274,13 +334,15 @@ export function TodayView() {
           </div>
           <div>
             <b className="block font-display text-[30px] leading-[1.1]">{topStreak}</b>
-            <span className="text-[13px] text-muted">day top streak</span>
+            <span className="text-[13px] text-muted">top streak</span>
           </div>
         </div>
         <button className="btn btn-block" type="button" onClick={() => setCelebrate(false)} autoFocus>
           Nice
         </button>
       </Sheet>
+
+      <MilestoneCelebration hit={milestone} today={today} onClose={() => setMilestone(null)} />
     </>
   );
 }
@@ -294,6 +356,7 @@ function HabitCard({
   pop,
   enter,
   onToggle,
+  onChangeDays,
 }: {
   habit: Habit;
   today: string;
@@ -303,6 +366,7 @@ function HabitCard({
   pop: boolean;
   enter: boolean;
   onToggle: (e: MouseEvent<HTMLButtonElement>) => void;
+  onChangeDays: () => void;
 }) {
   // The stats come from the server. They match what is on screen only once the habit
   // doc reflects today's state; until then say so rather than guess a number.
@@ -314,18 +378,19 @@ function HabitCard({
   if (saving && !fresh) {
     line = "Saving…";
   } else if (done) {
-    line = c > 0 ? (
-      <>
-        <Flame />
-        {c} day streak
-      </>
-    ) : null;
+    line =
+      c > 0 ? (
+        <>
+          <Flame />
+          {streakText(habit, today)}
+        </>
+      ) : null;
     tone = c > 1 ? "hot" : "";
   } else if (atRisk) {
     line = (
       <>
         <Flame />
-        Keep your {c} day streak
+        {isEveryDay(daysOn(habit, today)) ? `Keep your ${c} day streak` : streakText(habit, today)}
       </>
     );
     tone = "risk";
@@ -334,22 +399,73 @@ function HabitCard({
   }
 
   return (
-    <button
-      type="button"
-      className={`habit-card ${done ? "done" : ""} ${pop ? "pop" : ""} ${enter ? "enter" : ""}`}
-      style={{ "--hc": habit.color } as React.CSSProperties}
-      aria-pressed={done}
-      onClick={onToggle}
-    >
-      <span className="check">
-        <CheckIcon />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="name">{habit.name}</span>
-        <span key={`${done}-${c}-${saving && !fresh}`} className={`streak-line ${tone}`}>
-          {line}
+    <div className="habit-row">
+      <button
+        type="button"
+        className={`habit-card ${done ? "done" : ""} ${pop ? "pop" : ""} ${enter ? "enter" : ""}`}
+        style={{ "--hc": habit.color } as React.CSSProperties}
+        aria-pressed={done}
+        onClick={onToggle}
+      >
+        <span className="check">
+          <CheckIcon />
         </span>
-      </span>
+        <span className="min-w-0 flex-1">
+          <span className="name">{habit.name}</span>
+          <span key={`${done}-${c}-${saving && !fresh}`} className={`streak-line ${tone}`}>
+            {line}
+          </span>
+          <span className="card-when">{describeDays(daysOn(habit, today))}</span>
+          <PendingDays habit={habit} today={today} />
+        </span>
+      </button>
+      <ChangeDaysButton habit={habit} onClick={onChangeDays} />
+    </div>
+  );
+}
+
+/** A habit resting today: not a check-off target. Tapping it only says the streak is safe. */
+function RestCard({
+  habit,
+  today,
+  onTap,
+  onChangeDays,
+}: {
+  habit: Habit;
+  today: string;
+  onTap: () => void;
+  onChangeDays: () => void;
+}) {
+  const back = DAY_NAMES[weekdayOf(nextScheduledAfter(habit, today))];
+  return (
+    <div className="habit-row">
+      <button
+        type="button"
+        className="habit-card rest"
+        style={{ "--hc": habit.color } as React.CSSProperties}
+        onClick={onTap}
+      >
+        <span className="check">
+          <MoonIcon />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="name">{habit.name}</span>
+          <span className="streak-line">
+            {habit.currentStreak > 0 ? `${streakText(habit, today)} · safe` : "Not started"}
+          </span>
+          <span className="card-when">Rest day, back on {back}</span>
+          <PendingDays habit={habit} today={today} />
+        </span>
+      </button>
+      <ChangeDaysButton habit={habit} onClick={onChangeDays} />
+    </div>
+  );
+}
+
+function ChangeDaysButton({ habit, onClick }: { habit: Habit; onClick: () => void }) {
+  return (
+    <button type="button" className="iconbtn" aria-label={`Change days for ${habit.name}`} onClick={onClick}>
+      <CalendarIcon />
     </button>
   );
 }
@@ -371,15 +487,21 @@ function WeekStrip({
       <h2 className="section-title m-0!">This week</h2>
       <ol className="mt-3 flex justify-between">
         {week.map((d) => {
-          const count = habits.filter((h) => (d === today ? isDone(h.id) : days[h.id]?.includes(d))).length;
-          const pct = habits.length ? Math.round((count / habits.length) * 100) : 0;
+          // Each day counts the habits scheduled on it then, so a past week keeps its old days.
+          const dueThen = habits.filter((h) => scheduledOn(h, d));
+          const count = dueThen.filter((h) => (d === today ? isDone(h.id) : days[h.id]?.includes(d))).length;
+          const pct = dueThen.length ? Math.round((count / dueThen.length) * 100) : 0;
           return (
             <li
               key={d}
               className={`flex flex-col items-center gap-1.5 text-xs ${d === today ? "font-bold text-ink" : "text-muted"}`}
-              aria-label={`${weekdayShort(d)}: ${count} of ${habits.length} done`}
+              aria-label={`${weekdayShort(d)}: ${dueThen.length ? `${count} of ${dueThen.length} done` : "rest day"}`}
             >
-              <i className="relative block size-[30px] overflow-hidden rounded-full bg-line">
+              <i
+                className={`relative block size-[30px] overflow-hidden rounded-full ${
+                  dueThen.length ? "bg-line" : "border-[1.5px] border-dashed border-line"
+                }`}
+              >
                 <b className="absolute inset-x-0 bottom-0 bg-accent transition-[height] duration-500" style={{ height: `${pct}%` }} />
               </i>
               <span aria-hidden="true">{weekdayShort(d)}</span>
