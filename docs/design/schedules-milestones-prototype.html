@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streaks: Schedules and Milestones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+DESIGN REFERENCE: only the two NEW features (habit schedules, streak milestones).
+Not the whole app. Reuse the existing app shell, tokens, cards and sheet.
+
+SCHEDULE RULES
+- Each habit has a set of weekdays (Mon..Sun). Default: every day.
+- On a day the habit is not scheduled it is a "rest day": cannot be checked in, never breaks the streak.
+- Streak counts scheduled days only ("11 in a row"). Every-day habits still say "N day streak".
+- Changing the days takes effect tomorrow, so today's streak stays fair.
+- At least one day must be picked.
+MILESTONE RULES
+- Milestones at 3, 7, 14, 30, 60, 100, 365 in a row. Celebrated the first time that habit's streak reaches one.
+- A milestone is earned once per habit; undo of the check-in that earned it takes it back.
+- Badges shelf + "next milestone" bar live on the Progress screen.
+-->
+<style>
+:root{
+  --bg:#EAF1EE; --surface:#FFFFFF; --ink:#12201C; --muted:#586C66; --line:#D5E1DC;
+  --accent:#13795B; --accent-ink:#FFFFFF; --flame:#F2780C; --flame-soft:#FFE9D3; --done-soft:#DCF2E8; --danger:#B93A27; --danger-soft:#F8E2DD;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(18,32,28,.06),0 8px 24px rgba(18,32,28,.07);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0C1513; --surface:#16231F; --ink:#E8F2EE; --muted:#97ADA6; --line:#26372F;
+    --accent:#3DD6A3; --accent-ink:#06201A; --flame:#FFA03D; --flame-soft:#3B2A17; --done-soft:#17392D; --danger:#FF8672; --danger-soft:#3A211C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box;margin:0}
+html{min-height:100%}
+body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;letter-spacing:-.01em}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* prototype helper bar (not part of the app) */
+.proto{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 12px;font-size:13px;color:var(--muted);border-bottom:1px dashed var(--line)}
+.proto b{font-weight:700;color:var(--ink);margin-right:2px}
+.proto button{padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:500;text-align:center;min-height:32px}
+.proto button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.proto .reset{margin-left:6px}
+
+.app{max-width:640px;margin:0 auto;min-height:calc(100vh - 54px);display:flex;flex-direction:column}
+.content{flex:1;padding:20px 16px 28px}
+.nav{position:sticky;bottom:0;display:flex;border-top:1px solid var(--line);background:var(--surface)}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0 12px;font-size:12px;font-weight:500;color:var(--muted);text-align:center}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav svg{width:24px;height:24px}
+
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+.page-head h1{font-size:28px;font-weight:800;line-height:1.1}
+.page-head p{color:var(--muted);margin-top:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-align:center;min-height:44px}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.block{width:100%}
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 4px 10px;font-family:var(--body)}
+.grid2{display:grid;gap:22px}
+
+/* habit cards */
+.list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+.card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;background:var(--surface);border-radius:18px;padding:6px 8px 6px 6px;box-shadow:var(--shadow);border:2px solid transparent;transition:background .25s,transform .12s}
+.card.done{background:var(--done-soft)}
+.cardmain{display:flex;align-items:center;gap:14px;padding:8px 8px 8px 10px;border-radius:14px;min-width:0}
+.cardmain:active{transform:scale(.985)}
+.check{position:relative;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--hc);display:grid;place-items:center;flex:none;transition:background .25s;color:transparent}
+.card.done .check{background:var(--hc);color:#fff}
+.check svg{width:24px;height:24px}
+.card.rest .check{border:2px dashed var(--line);color:var(--muted)}
+.card.rest .check svg{width:22px;height:22px}
+.card.rest{box-shadow:none;background:transparent;border:1.5px dashed var(--line)}
+.meta{display:block;min-width:0}
+.name{display:block;font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.card.done .name{opacity:.75}
+.streak{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--muted);margin-top:2px}
+.streak svg{width:16px;height:16px}
+.streak.hot{color:var(--flame);font-weight:700}
+.streak.risk::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--flame);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.when{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--muted);border:1.5px solid var(--line);flex:none;background:var(--surface)}
+.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+.iconbtn svg{width:20px;height:20px}
+.card.pop{animation:flash .75s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--hc) 55%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.card.pop .check::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:3px solid var(--hc);animation:ripple .65s ease-out forwards;pointer-events:none}
+@keyframes ripple{from{transform:scale(1);opacity:.9}to{transform:scale(1.9);opacity:0}}
+.card.pop .check path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .35s .12s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.card.pop .streak{animation:bump .6s .15s cubic-bezier(.3,1.6,.5,1) backwards}
+@keyframes bump{from{transform:scale(.8);opacity:.2}}
+.empty{color:var(--muted);font-size:14px;padding:6px 6px 0}
+
+.note{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start;background:var(--surface);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+.note svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--accent)}
+
+/* editor sheet */
+.scrim{position:fixed;inset:0;background:rgba(5,12,10,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:520px;background:var(--surface);border-radius:26px 26px 0 0;padding:22px 20px 24px;animation:up .28s cubic-bezier(.2,.9,.3,1);max-height:92vh;overflow-y:auto}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.sheet h2{font-size:22px;margin-bottom:4px}
+.sheet .sub{color:var(--muted);font-size:14px;margin-bottom:6px}
+label,.lbl{display:block;font-weight:700;font-size:14px;margin:14px 0 6px}
+.input{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-size:16px}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.input[aria-invalid="true"]{border-color:var(--danger)}
+.err{color:var(--danger);font-size:13px;margin-top:6px}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-weight:500;font-size:14px;min-height:40px;text-align:center}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.pills{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+.pill{min-height:48px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-weight:700;text-align:center;transition:background .15s,border-color .15s,transform .1s}
+.pill small{font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.02em}
+.pill:active{transform:scale(.94)}
+.pill[aria-pressed="true"]{background:var(--hc);border-color:var(--hc);color:#fff}
+.pill[aria-pressed="true"] small{color:rgba(255,255,255,.85)}
+.summary{margin-top:12px;font-size:14px;font-weight:500;display:flex;gap:8px;align-items:center}
+.summary svg{width:18px;height:18px;color:var(--accent);flex:none}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+.actions{display:flex;gap:10px;margin-top:22px}
+.actions .btn{flex:1}
+
+/* milestones */
+.panel{background:var(--surface);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px}
+.chips .chip{flex:none;background:var(--surface)}
+.chips .chip[aria-pressed="true"]{background:var(--hc);border-color:var(--hc);color:#fff}
+.next{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.next .big{font-family:var(--display);font-weight:800;font-size:38px;line-height:1.05;font-variant-numeric:tabular-nums}
+.next .lab{color:var(--muted);font-size:14px}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0 6px}
+.bar i{display:block;height:100%;background:var(--flame);border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.badge{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.medal{width:100%;max-width:68px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;font-variant-numeric:tabular-nums;position:relative}
+.badge.on .medal{background:var(--flame-soft);border:3px solid var(--flame);color:var(--flame)}
+.badge.off .medal{border:2px dashed var(--line);color:var(--muted);font-weight:700}
+.badge.off .medal svg{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;background:var(--surface);border-radius:50%;padding:3px;color:var(--muted)}
+.badge span{font-size:12px;color:var(--muted);line-height:1.2}
+.badge.on span{color:var(--ink);font-weight:700}
+.badge.fresh .medal{animation:medalin .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes medalin{from{transform:scale(.3) rotate(-30deg);opacity:0}}
+
+/* calendar */
+.cal{margin-top:0}
+.cal h2{font-size:18px;margin-bottom:10px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wd{font-size:12px;color:var(--muted);text-align:center;font-weight:700}
+.day{aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);border:2px solid transparent}
+.day.done{background:var(--hc);color:#fff;font-weight:700}
+.day.miss{background:var(--danger-soft);color:var(--danger)}
+.day.rest{border:1.5px dashed var(--line)}
+.day.today{box-shadow:0 0 0 2px var(--ink)}
+.day.future{opacity:.35}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:50%;display:inline-block}
+.legend .d{background:var(--hc)}.legend .m{background:var(--danger-soft);border:1px solid var(--danger)}.legend .r{border:1.5px dashed var(--muted)}
+
+/* celebration */
+.celebrate{align-items:center;padding:20px;background:rgba(5,12,10,.6)}
+.celeb{max-width:380px;border-radius:28px;text-align:center;padding:30px 24px 24px;animation:celebin .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes celebin{from{transform:scale(.7);opacity:0}}
+.celeb .bigmedal{width:112px;height:112px;margin:0 auto 14px;border-radius:50%;background:var(--flame-soft);border:5px solid var(--flame);display:grid;place-items:center;color:var(--flame);font-family:var(--display);font-weight:800;font-size:44px;animation:rise .8s cubic-bezier(.3,1.6,.5,1);position:relative}
+.celeb .bigmedal svg{position:absolute;top:-16px;right:-12px;width:38px;height:38px;animation:flicker 1.6s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg)}35%{transform:scale(1.08,1.12) rotate(2deg)}65%{transform:scale(.96,1.04) rotate(-1deg)}}
+@keyframes rise{from{transform:scale(.2) translateY(30px)}}
+.celeb h2{font-size:28px;margin-bottom:6px}
+.celeb p{color:var(--muted)}
+.celeb .actions{flex-direction:column}
+.fx{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+.fx i{position:absolute;width:9px;height:9px;border-radius:2px}
+.toast{position:fixed;left:16px;right:16px;bottom:84px;max-width:420px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:16px;font-size:14px;font-weight:500;z-index:30;animation:up .25s;box-shadow:var(--shadow)}
+
+@media (min-width:900px){
+  .app{max-width:1000px}
+  .content{padding:32px 28px}
+  .page-head h1{font-size:36px}
+  .grid2{grid-template-columns:minmax(0,1fr) 340px;align-items:start;gap:28px}
+  .grid2.prog{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .scrim{align-items:center}
+  .sheet{border-radius:26px;margin:16px}
+  .toast{left:auto;right:28px;bottom:28px;margin:0;width:360px}
+  .nav{justify-content:center}
+  .nav button{flex:none;width:160px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="proto" id="proto"></div>
+<div class="app" id="app"></div>
+<div id="layer"></div>
+<div class="fx" id="fx" aria-hidden="true"></div>
+<script>
+(function(){
+var DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],FULL=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],LET=["M","T","W","T","F","S","S"];
+var MS=[[3,"First spark"],[7,"One week"],[14,"Two weeks"],[30,"One month"],[60,"Two months"],[100,"Hundred club"],[365,"Full year"]];
+var ALL=[0,1,2,3,4,5,6],WEEKDAYS=[0,1,2,3,4],WEEKEND=[5,6];
+var realIdx=(new Date().getDay()+6)%7;
+function fresh(){return[
+ {id:1,name:"Read 20 pages",color:"#13795B",days:ALL.slice(),streak:6,best:6,done:false},
+ {id:2,name:"Gym",color:"#3B6FD8",days:[0,2,4],streak:11,best:11,done:false},
+ {id:3,name:"Meal prep",color:"#C2569A",days:[6],streak:4,best:4,done:false},
+ {id:4,name:"Write in journal",color:"#7A5BD6",days:WEEKDAYS.slice(),streak:29,best:29,done:false}
+]}
+var S={view:"today",today:realIdx,habits:fresh(),pick:1,sheet:null,celeb:null,toast:null,popId:null,freshBadge:null,nextId:10};
+var I={
+ flame:function(c){return '<svg class="flame '+(c||"")+'" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.9 3.6 5.2 5.9 5.2 11a5.2 5.2 0 0 1-10.4 0c0-2.2 1-3.6 2.1-4.7.3 1.4 1 2.2 1.8 2.5C10.2 7.5 10.6 4.2 12 1.5z" fill="var(--flame)"/><path d="M12 21.500a3.200 3.200 0 0 1-3.200-3.200c0-1.800 1.500-2.700 2.100-4.200.5.900 1.100 1.300 1.700 1.300.1-1 .8-1.700 1.300-2.200.8 1.100 1.300 2.300 1.300 5.100a3.200 3.200 0 0 1-3.200 3.200z" fill="#FFD27A"/></svg>'},
+ check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M5 12.500l4.500 4.500L19 7.500"/></svg>',
+ moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.500A8 8 0 0 1 9.500 4 8 8 0 1 0 20 14.500z"/></svg>',
+ cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.500" y="5" width="17" height="15.500" rx="3"/><path d="M8 3v4M16 3v4M3.500 10h17"/></svg>',
+ lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.500" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2.500"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+ today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.500l3 3 5-6"/></svg>',
+ chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+ info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+};
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function habit(id){return S.habits.filter(function(h){return h.id===id})[0]}
+function sameDays(a,b){return a.length===b.length&&a.slice().sort().join()===b.slice().sort().join()}
+function isDaily(h){return h.days.length===7}
+function due(h){return h.days.indexOf(S.today)>-1}
+function whenText(days){
+  if(days.length===7)return "Every day";
+  if(sameDays(days,WEEKDAYS))return "Weekdays";
+  if(sameDays(days,WEEKEND))return "Weekends";
+  return days.slice().sort().map(function(d){return DAYS[d]}).join(" · ");
+}
+function streakText(h){return isDaily(h)?h.streak+" day streak":h.streak+" in a row"}
+function nextDue(h){for(var k=1;k<=7;k++){var d=(S.today+k)%7;if(h.days.indexOf(d)>-1)return DAYS[d]}return ""}
+function earned(h){return MS.filter(function(m){return m[0]<=h.best})}
+function nextMs(h){for(var i=0;i<MS.length;i++)if(MS[i][0]>h.streak)return MS[i];return null}
+function prevMsFor(n){var p=0;MS.forEach(function(m){if(m[0]<=n)p=m[0]});return p}
+function msName(n){for(var i=0;i<MS.length;i++)if(MS[i][0]===n)return MS[i][1];return ""}
+
+/* proto bar */
+function protoHtml(){
+  var h='<b>Pretend today is</b>';
+  DAYS.forEach(function(d,i){h+='<button type="button" data-act="day" data-i="'+i+'" aria-pressed="'+(S.today===i)+'">'+d+(i===realIdx?" (real)":"")+'</button>'});
+  return h+'<button class="reset" type="button" data-act="reset">Reset demo</button>';
+}
+
+/* Today */
+function todayView(){
+  var dueH=S.habits.filter(due),rest=S.habits.filter(function(h){return!due(h)});
+  var left=dueH.filter(function(h){return!h.done}).length;
+  var h='<div class="page-head"><div><h1>Today</h1><p>'+FULL[S.today]+' · '+dueH.length+' due, '+rest.length+' resting</p></div><button class="btn" data-act="add" type="button">Add habit</button></div>';
+  h+='<div class="grid2"><div><div class="section-title">Due today</div><div class="list">';
+  if(!dueH.length)h+='<p class="empty">Nothing due today. Enjoy the rest day.</p>';
+  dueH.forEach(function(x){
+    var risk=!x.done&&x.streak>0;
+    h+='<div class="card'+(x.done?" done":"")+(S.popId===x.id?" pop":"")+'" style="--hc:'+x.color+'"><button class="cardmain" data-act="toggle" data-id="'+x.id+'" aria-pressed="'+x.done+'" type="button"><span class="check">'+I.check+'</span><span class="meta"><span class="name">'+esc(x.name)+'</span><span class="streak '+(x.done&&x.streak>1?"hot":risk?"risk":"")+'">'+(x.streak>0?I.flame("")+streakText(x):"Start your streak today")+'</span><span class="when">'+whenText(x.days)+'</span></span></button><button class="iconbtn" data-act="edit" data-id="'+x.id+'" type="button" aria-label="Change days for '+esc(x.name)+'">'+I.cal+'</button></div>';
+  });
+  h+='</div>';
+  h+='<div class="section-title">Resting today</div><div class="list">';
+  if(!rest.length)h+='<p class="empty">Every habit is due today.</p>';
+  rest.forEach(function(x){
+    h+='<div class="card rest" style="--hc:'+x.color+'"><button class="cardmain" data-act="rest" data-id="'+x.id+'" type="button"><span class="check">'+I.moon+'</span><span class="meta"><span class="name">'+esc(x.name)+'</span><span class="streak">'+(x.streak>0?streakText(x)+" · safe":"Not started")+'</span><span class="when">Rest day · back on '+nextDue(x)+'</span></span></button><button class="iconbtn" data-act="edit" data-id="'+x.id+'" type="button" aria-label="Change days for '+esc(x.name)+'">'+I.cal+'</button></div>';
+  });
+  h+='</div></div><div><div class="note">'+I.info+'<span>Streaks count scheduled days only. On a rest day the habit can\'t be checked in and the streak stays safe.'+(left?" ":" ")+'</span></div></div></div>';
+  return h;
+}
+
+/* Progress */
+function calHtml(x){
+  var todayPos=28+S.today,status={},count=0,miss=false,k;
+  for(k=0;k<=todayPos;k++){
+    var wd=((S.today-k)%7+7)%7,sch=x.days.indexOf(wd)>-1;
+    if(!sch){status[k]="rest";continue}
+    if(k===0){status[k]=x.done?"done":"pending";if(x.done)count++;continue}
+    if(x.created){status[k]="none";continue}
+    if(count<x.streak-(x.done?0:0)){status[k]="done";count++}
+    else if(!miss){status[k]="miss";miss=true}
+    else status[k]=((x.id*7+k*13)%10<7)?"done":"miss";
+  }
+  var base=new Date();base.setDate(base.getDate()+(S.today-realIdx));
+  var h='<div class="calgrid" style="--hc:'+x.color+'" role="img" aria-label="Last five weeks for '+esc(x.name)+'">';
+  DAYS.forEach(function(d){h+='<div class="wd">'+d[0]+'</div>'});
+  for(var i=0;i<35;i++){
+    var back=todayPos-i,dt=new Date(base);dt.setDate(base.getDate()-back);
+    if(back<0){h+='<div class="day future">'+dt.getDate()+'</div>';continue}
+    var st=status[back],cls="day "+(st==="done"?"done":st==="miss"?"miss":st==="rest"?"rest":"")+(back===0?" today":"");
+    h+='<div class="'+cls+'">'+dt.getDate()+'</div>';
+  }
+  return h+'</div><div class="legend" style="--hc:'+x.color+'"><span><i class="d"></i>Done</span><span><i class="m"></i>Missed</span><span><i class="r"></i>Rest day</span></div>';
+}
+function progressView(){
+  var x=habit(S.pick)||S.habits[0];S.pick=x.id;
+  var h='<div class="page-head"><div><h1>Progress</h1><p>Milestones and your last five weeks.</p></div></div><div class="chips" role="group" aria-label="Choose a habit">';
+  S.habits.forEach(function(y){h+='<button class="chip" style="--hc:'+y.color+'" data-act="pick" data-id="'+y.id+'" aria-pressed="'+(y.id===x.id)+'" type="button">'+esc(y.name)+'</button>'});
+  h+='</div><div class="grid2 prog"><div class="panel">';
+  var nm=nextMs(x),unit=isDaily(x)?"days":"in a row";
+  h+='<h2 style="font-size:18px;margin-bottom:12px">Milestones</h2>';
+  if(nm){
+    var base=prevMsFor(x.streak),pct=Math.max(4,Math.round((x.streak-base)/(nm[0]-base)*100));
+    h+='<div class="next"><div class="big">'+x.streak+'</div><div><div style="font-weight:700">Next: '+nm[1]+' ('+nm[0]+')</div><div class="lab">'+(nm[0]-x.streak)+' more '+(nm[0]-x.streak===1?"check-in":"check-ins")+' to go</div></div></div><div class="bar" role="progressbar" aria-valuenow="'+x.streak+'" aria-valuemin="'+base+'" aria-valuemax="'+nm[0]+'" aria-label="Progress to '+nm[1]+'"><i style="width:'+pct+'%"></i></div>';
+  }else h+='<p style="font-weight:700">Every milestone earned. Legend.</p>';
+  h+='<div class="badges">';
+  MS.forEach(function(m){
+    var on=m[0]<=x.best,fr=S.freshBadge&&S.freshBadge.id===x.id&&S.freshBadge.n===m[0];
+    h+='<div class="badge '+(on?"on":"off")+(fr?" fresh":"")+'"><div class="medal" aria-hidden="true">'+m[0]+(on?"":I.lock)+'</div><span><span class="vh">'+(on?"Earned: ":"Locked: ")+'</span>'+m[1]+'</span></div>';
+  });
+  h+='</div></div><div class="panel cal"><h2>Last 5 weeks</h2>'+calHtml(x)+'</div></div>';
+  return h;
+}
+
+/* Editor sheet */
+function sheetHtml(){
+  var s=S.sheet,h='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st" style="--hc:'+s.color+'">';
+  h+='<h2 id="st">'+(s.id?"Change days":"Add habit")+'</h2><p class="sub">'+(s.id?esc(s.name):"Choose when it should happen.")+'</p>';
+  if(!s.id)h+='<label for="hname">Name</label><input class="input" id="hname" maxlength="50" autocomplete="off" placeholder="e.g. Drink water" value="'+esc(s.name)+'"'+(s.nameErr?' aria-invalid="true"':"")+'>'+(s.nameErr?'<div class="err">Give your habit a name.</div>':"");
+  h+='<div class="lbl">Repeat</div><div class="presets" role="group" aria-label="Quick choices">';
+  [["Every day",ALL],["Weekdays",WEEKDAYS],["Weekends",WEEKEND]].forEach(function(p){h+='<button class="chip" type="button" data-act="preset" data-p="'+p[1].join(",")+'" aria-pressed="'+sameDays(s.days,p[1])+'">'+p[0]+'</button>'});
+  h+='</div><div class="pills" role="group" aria-label="Days of the week">';
+  DAYS.forEach(function(d,i){var on=s.days.indexOf(i)>-1;h+='<button class="pill" type="button" data-act="dayp" data-i="'+i+'" aria-pressed="'+on+'" aria-label="'+FULL[i]+'"><span>'+LET[i]+'</span><small>'+d+'</small></button>'});
+  h+='</div>';
+  if(s.err)h+='<div class="err" role="alert">'+s.err+'</div>';
+  else h+='<div class="summary">'+I.cal+'<span>'+(s.days.length===7?"Every day":s.days.length+(s.days.length===1?" day":" days")+" a week · "+whenText(s.days))+'</span></div>';
+  h+='<p class="hint">Rest days never break your streak.'+(s.id?" Changes start tomorrow, so today\'s streak stays fair.":"")+'</p>';
+  h+='<div class="actions"><button class="btn ghost" data-act="close" type="button">Cancel</button><button class="btn" data-act="save" type="button">'+(s.id?"Save days":"Add habit")+'</button></div></div></div>';
+  return h;
+}
+
+/* Celebration */
+function celebHtml(){
+  var c=S.celeb,x=habit(c.id),nm=nextMs({streak:c.n,best:c.n});
+  var nx=null;for(var i=0;i<MS.length;i++)if(MS[i][0]>c.n){nx=MS[i];break}
+  return '<div class="scrim celebrate" data-act="scrim2"><div class="sheet celeb" role="dialog" aria-modal="true" aria-labelledby="ct"><div class="bigmedal" aria-hidden="true">'+c.n+I.flame("")+'</div><h2 id="ct">'+msName(c.n)+'!</h2><p>'+esc(x.name)+': '+c.n+(isDaily(x)?" days":" in a row")+'.'+(nx?" Next stop: "+nx[1]+" at "+nx[0]+".":" That is every milestone.")+'</p><div class="actions"><button class="btn" data-act="celebClose" data-af type="button">Keep going</button><button class="btn ghost" data-act="seeBadges" type="button">See my badges</button></div></div></div>';
+}
+
+function rain(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  var fx=$("#fx"),cols=["#FFB23E","#6FE3B8","#3B6FD8","#C2569A","#FFFFFF","#F2780C"],w=innerWidth,h=innerHeight;
+  for(var i=0;i<80;i++){
+    var p=document.createElement("i"),sz=6+Math.random()*7;
+    p.style.left=Math.random()*w+"px";p.style.top="-16px";p.style.width=sz+"px";p.style.height=sz*1.4+"px";p.style.background=cols[i%cols.length];
+    fx.appendChild(p);
+    var dx=(Math.random()-.5)*160;
+    p.animate([{transform:"translate(0,0) rotate(0)",opacity:1},{transform:"translate("+dx+"px,"+(h+40)+"px) rotate("+(Math.random()*900-450)+"deg)",opacity:1}],{duration:1900+Math.random()*1500,delay:Math.random()*700,easing:"cubic-bezier(.3,.1,.6,1)",fill:"backwards"}).onfinish=(function(el){return function(){el.remove()}})(p);
+  }
+}
+var tt;
+function toast(m){S.toast=m;clearTimeout(tt);tt=setTimeout(function(){S.toast=null;render()},2800)}
+
+function render(){
+  $("#proto").innerHTML=protoHtml();
+  var body=S.view==="today"?todayView():progressView();
+  $("#app").innerHTML='<div class="content">'+body+'</div><nav class="nav" aria-label="Main"><button data-act="nav" data-v="today" type="button"'+(S.view==="today"?' aria-current="page"':"")+'>'+I.today+'Today</button><button data-act="nav" data-v="progress" type="button"'+(S.view==="progress"?' aria-current="page"':"")+'>'+I.chart+'Progress</button></nav>';
+  $("#layer").innerHTML=(S.sheet?sheetHtml():"")+(S.celeb?celebHtml():"")+(S.toast?'<div class="toast" role="status">'+esc(S.toast)+'</div>':"");
+  var af=$("[data-af]");if(af)af.focus();
+  if(S.sheet&&!S.sheet.focused){var n=$("#hname");if(n)n.focus();S.sheet.focused=true}
+  S.popId=null;S.freshBadge=null;
+}
+
+document.addEventListener("click",function(ev){
+  var el=ev.target.closest("[data-act]");if(!el)return;
+  var a=el.dataset.act,id=el.dataset.id?+el.dataset.id:null,x;
+  if(a==="scrim"){if(ev.target!==el)return;S.sheet=null;return render()}
+  if(a==="scrim2"){return}
+  if(a==="day"){S.today=+el.dataset.i;return render()}
+  if(a==="reset"){var t=S.today;S=Object.assign({},S,{habits:fresh(),sheet:null,celeb:null,toast:null,pick:1,nextId:10,today:t});return render()}
+  if(a==="nav"){S.view=el.dataset.v;return render()}
+  if(a==="pick"){S.pick=id;return render()}
+  if(a==="rest"){x=habit(id);toast(x.name+" rests today. Your streak is safe.");return render()}
+  if(a==="toggle"){
+    x=habit(id);
+    if(!x.done){
+      x.done=true;x.prevBest=x.best;x.streak++;
+      var firstTime=x.streak>x.best;if(firstTime)x.best=x.streak;
+      var hit=firstTime&&MS.some(function(m){return m[0]===x.streak});
+      S.popId=id;
+      if(hit){S.celeb={id:id,n:x.streak};S.freshBadge={id:id,n:x.streak};render();rain();return}
+    }else{x.done=false;x.streak=Math.max(0,x.streak-1);x.best=x.prevBest===undefined?x.best:x.prevBest}
+    return render();
+  }
+  if(a==="celebClose"){S.celeb=null;return render()}
+  if(a==="seeBadges"){S.pick=S.celeb.id;S.celeb=null;S.view="progress";return render()}
+  if(a==="add"){S.sheet={id:null,name:"",color:"#13795B",days:ALL.slice()};return render()}
+  if(a==="edit"){x=habit(id);S.sheet={id:id,name:x.name,color:x.color,days:x.days.slice(),focused:true};return render()}
+  if(a==="close"){S.sheet=null;return render()}
+  if(a==="preset"){S.sheet.days=el.dataset.p.split(",").map(Number);S.sheet.err=null;S.sheet.focused=true;keepName();return render()}
+  if(a==="dayp"){var i=+el.dataset.i,d=S.sheet.days,p=d.indexOf(i);if(p>-1)d.splice(p,1);else d.push(i);S.sheet.err=null;S.sheet.focused=true;keepName();return render()}
+  if(a==="save"){
+    var s=S.sheet;keepName();
+    if(!s.id&&!s.name.trim()){s.nameErr=true;s.focused=false;return render()}
+    if(!s.days.length){s.err="Pick at least one day.";s.focused=true;return render()}
+    if(s.id){habit(s.id).days=s.days.slice();S.sheet=null;toast("Saved. The new days start tomorrow.")}
+    else{S.habits.push({id:S.nextId++,name:s.name.trim(),color:["#D17F00","#13795B","#3B6FD8"][S.habits.length%3],days:s.days.slice(),streak:0,best:0,done:false,created:true});S.sheet=null;toast("Habit added.")}
+    return render();
+  }
+});
+function keepName(){var n=$("#hname");if(n&&S.sheet)S.sheet.name=n.value}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){if(S.celeb){S.celeb=null;render()}else if(S.sheet){S.sheet=null;render()}}});
+render();
+})();
+</script>
+</body>
+</html>
