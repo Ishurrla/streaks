@@ -101,16 +101,27 @@ export async function seedUser(uid: string, fields: Record<string, unknown> = {}
     });
 }
 
-export async function seedHabit(uid: string, habitId: string, checkIns: string[] = [], freezes: string[] = []) {
+/** A habit as the app creates it now. `fields` can set `days` or leave out milestonesEarned (undefined). */
+export async function seedHabit(
+  uid: string,
+  habitId: string,
+  checkIns: string[] = [],
+  freezes: string[] = [],
+  fields: Record<string, unknown> = {},
+) {
   const ref = adminDb().doc(`users/${uid}/habits/${habitId}`);
-  await ref.set({
+  const data: Record<string, unknown> = {
     name: "Read",
     color: "#13795B",
     createdAt: Timestamp.now(),
     currentStreak: 0,
     bestStreak: 0,
     lastCheckInDate: null,
-  });
+    milestonesEarned: [],
+    ...fields,
+  };
+  for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
+  await ref.set(data);
   await Promise.all([
     ...checkIns.map((d) => ref.collection("checkIns").doc(d).set({ createdAt: Timestamp.now() })),
     ...freezes.map((d) => ref.collection("freezeUses").doc(d).set({ createdAt: Timestamp.now() })),

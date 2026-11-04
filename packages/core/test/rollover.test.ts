@@ -219,7 +219,10 @@ describe("runRollover", () => {
     const user = await userData("u");
     expect(user.nextRolloverAt.toDate()).toEqual(new Date("2026-10-31T23:00:00Z"));
     expect(user.lastClosedDate).toBe("2026-10-30");
-    expect(user.freezesAvailable).toBe(1); // 28th-30th missed: more than one day, no freeze
+    // Each missed day is closed in order, as if the job had run on time: the 28th uses
+    // the freeze, then the 29th is a second miss with none left and breaks the streak.
+    expect(await freezeIds("u", "h")).toEqual(["2026-10-28"]);
+    expect(user.freezesAvailable).toBe(0);
     expect((await habitData("u", "h")).currentStreak).toBe(0);
   });
 });

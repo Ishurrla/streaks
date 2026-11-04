@@ -20,7 +20,14 @@ describe("checkInFor", () => {
 
     const res = await checkInFor(UID, "h1", NOW);
 
-    expect(res).toEqual({ date: "2026-10-28", changed: true, currentStreak: 3, bestStreak: 3, lastCheckInDate: "2026-10-28" });
+    expect(res).toEqual({
+      date: "2026-10-28",
+      changed: true,
+      currentStreak: 3,
+      bestStreak: 3,
+      lastCheckInDate: "2026-10-28",
+      milestoneReached: 3,
+    });
     expect(await checkInIds(UID, "h1")).toEqual(["2026-10-26", "2026-10-27", "2026-10-28"]);
     const habit = (await adminDb().doc(`users/${UID}/habits/h1`).get()).data();
     expect(habit).toMatchObject({ currentStreak: 3, bestStreak: 3, lastCheckInDate: "2026-10-28" });
@@ -95,7 +102,14 @@ describe("undoCheckInFor", () => {
 
     const res = await undoCheckInFor(UID, "h1", NOW);
 
-    expect(res).toEqual({ date: "2026-10-28", changed: true, currentStreak: 1, bestStreak: 1, lastCheckInDate: "2026-10-27" });
+    expect(res).toEqual({
+      date: "2026-10-28",
+      changed: true,
+      currentStreak: 1,
+      bestStreak: 1,
+      lastCheckInDate: "2026-10-27",
+      milestoneReached: null,
+    });
     expect(await checkInIds(UID, "h1")).toEqual(["2026-10-27"]);
   });
 
