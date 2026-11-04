@@ -203,6 +203,21 @@ Then **Run workflow** (branch `master`).
 - A step that fails with `401` means `CRON_SECRET` differs between GitHub and Vercel (after changing
   it in Vercel, Redeploy). A `404` or connection error means `APP_URL` is wrong.
 
+## Releasing a change to the rules
+
+Vercel deploys the app on every push, but **not** `firestore.rules`. When a release changes the rules
+(habit schedules and milestones did), deploy the rules **first**, then push:
+
+```sh
+pnpm exec firebase deploy --only firestore:rules --project prod
+```
+
+For schedules and milestones the order matters. The new app sends `days` and `milestonesEarned` when
+it adds a habit, and the old rules reject both, so adding a habit would fail between the Vercel deploy
+and the rules deploy. The new rules still accept habits from the old app, so going rules-first is safe.
+Nothing else changes: no new env vars, no new indexes, and the cron keeps the same endpoints, secret
+and schedule.
+
 ## After deploying
 
 - Try a real reminder on a phone: README > "Testing notifications", level 3.

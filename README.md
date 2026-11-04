@@ -70,7 +70,7 @@ in a name and email. Settings > Sign-in methods and deleting a Google-only accou
 ## How the server works
 
 Every write the rules do not allow from the browser goes through a `POST /api/...` route:
-`check-in`, `undo-check-in`, `ensure-profile`, `delete-habit`, `update-timezone`,
+`check-in`, `undo-check-in`, `ensure-profile`, `delete-habit`, `update-habit-days`, `update-timezone`,
 `register-push-token`, `remove-push-token`, `sync-reminders` and `delete-account`.
 
 - The browser sends its Firebase ID token as `Authorization: Bearer <token>` (`callApi` in
@@ -78,11 +78,35 @@ Every write the rules do not allow from the browser goes through a `POST /api/..
   the verified token, never from the body or URL.
 - Errors are `{ "error": { "code", "message" } }` with 400 (bad input), 401 (no or bad token),
   403 (closed account, or a sign-in too old to delete the account), 404 (not yours or not found) or
-  409 (no profile yet, or a day that has closed).
+  409 (no profile yet, a day that has closed, or `NOT_SCHEDULED`: a check-in on a rest day).
 - The server never trusts a date from the client: it works out "today" from the user's timezone.
 - The Admin SDK is set up from `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` and
   `FIREBASE_PRIVATE_KEY` in production, and uses the emulators locally. It refuses to start on the
   emulators in any Vercel deployment.
+
+## Data model and rules
+
+Firestore, all under `users/{uid}` (`docs/PROJECT_BRIEF.md` has the full list):
+
+| Document | Client may write | Server-only |
+| --- | --- | --- |
+| `users/{uid}` | `name`, `reminderEnabled`, `reminderTime`, `theme` | `timezone`, `freezesAvailable`, `nextRolloverAt`, `lastClosedDate`, `lastReminderDate`, `nextReminderAt` |
+| `habits/{id}` | create with `name`, `color`, zeroed stats, optional `days`, optional empty `milestonesEarned`; then only `name` and `color` | `currentStreak`, `bestStreak`, `lastCheckInDate`, `milestonesEarned`, `days` after creation, `nextDays`, `nextDaysFrom`, `pastDays` |
+| `habits/{id}/checkIns/{date}`, `freezeUses/{date}` | nothing | everything (`checkIns` also hold `milestonesAdded`) |
+| `pushTokens/{id}` | nothing (not even read) | everything |
+
+**Schedules.**
+- `days` holds the weekdays a habit is due, 0 = Monday to 6 = Sunday, 1 to 7 of them. Missing means every day.
+- Any other day is a rest day: no check-in (409 `NOT_SCHEDULED`), and it never breaks the streak or uses a freeze.
+- Streaks count scheduled days only; for those habits the app says "N in a row" rather than "N day streak".
+- `POST /api/update-habit-days { habitId, days }` changes the days from tomorrow in the user's timezone. It stores `nextDays` and `nextDaysFrom`.
+- The rollover (or the next check-in) makes the change current and keeps the old days in `pastDays`, so past days keep the schedule they had.
+- One function, `scheduledOn(habit, date)` in `packages/core/src/schedule.ts`, decides this everywhere. That covers check-in, rollover and catch-up, reminders, and the app through `@streaks/core/schedule`.
+
+**Milestones.**
+- Milestones are 3, 7, 14, 30, 60, 100 and 365.
+- A check-in that first reaches one adds it to `milestonesEarned`, and `/api/check-in` returns it as `milestoneReached`. Undoing that check-in takes it back.
+- Habits from before milestones get theirs filled in from `bestStreak` on the next rollover or check-in, with no celebration.
 
 ## Cron
 
@@ -96,6 +120,10 @@ A missing or wrong secret gets 401 (compared in constant time). Both jobs are id
 starting new pages after about 7 seconds, and leave anything unfinished for the next run. The app also
 catches up on its own: every app start (`ensure-profile`) and every check-in rolls that user over if
 the cron is late, so streaks are right whenever people open the app.
+
+Schedules and milestones did not change the cron: same two endpoints, same `CRON_SECRET`, same
+15-minute schedule. Rest days are handled inside the jobs: the rollover skips them and the reminders
+job only counts habits due today.
 
 **Is the cron running?** After each completed run the endpoint writes `cron/rollover` and
 `cron/reminders` in Firestore with `lastSuccessfulRun`, `lastResult` and `lastDurationMs`. Look at
@@ -127,6 +155,8 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Area | File | Emulators |
 | --- | --- | --- |
 | Streak logic (`computeStreaks`) | `packages/core/test/unit/streaks.test.ts` | no |
+| Schedules, rest days, day changes, milestones | `packages/core/test/unit/habit-schedule.test.ts` | no |
+| Rest days and milestones in check-in, undo and rollover | `packages/core/test/schedules.test.ts` | yes |
 | Local dates, timezones, reminder schedule | `packages/core/test/unit/{time,schedule}.test.ts` | no |
 | Firestore security rules | `packages/core/test/rules.test.ts` | yes |
 | Check-ins and undo | `packages/core/test/checkins.test.ts` | yes |
@@ -138,7 +168,7 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Cron endpoints: secret, both jobs | `apps/web/test/routes/cron.test.ts` | yes |
 | Google sign-in, linking, set password, delete (real client SDK, no popup) | `apps/web/test/routes/google-account.test.ts` | yes |
 | Web date, form, theme and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
-| Theme switch and password field (jsdom) | `apps/web/src/components/*.test.tsx` | no |
+| Theme switch, password field and day picker (jsdom) | `apps/web/src/components/**/*.test.tsx` | no |
 | No sideways scroll at 360 to 1280px, light and dark (real browser) | `apps/web/e2e/layout.spec.ts` | `pnpm dev` |
 
 The layout test is separate from `pnpm test` because it drives the running app. With `pnpm dev`

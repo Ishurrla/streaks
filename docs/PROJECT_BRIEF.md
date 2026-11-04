@@ -27,8 +27,8 @@ Ignore the "Skip to next day", "See landing page" and "See sign up" buttons in t
 ## Data model (Firestore)
 
 - `users/{uid}`: `name`, `timezone` (IANA string, default `Africa/Lagos`), `reminderEnabled`, `reminderTime`, `theme`, `freezesAvailable` (default 1), `nextRolloverAt` (timestamp, the UTC instant of the user's next local midnight), `lastReminderDate`.
-- `users/{uid}/habits/{habitId}`: `name` (1 to 40 chars), `color`, `createdAt`, plus server-owned stats: `currentStreak`, `bestStreak`, `lastCheckInDate`.
-- `users/{uid}/habits/{habitId}/checkIns/{localDate}`: the **document ID is the date** (`YYYY-MM-DD`, in the user's timezone). One document per habit per day, so a second check-in for the same day cannot exist.
+- `users/{uid}/habits/{habitId}`: `name` (1 to 40 chars), `color`, `createdAt`, `days` (see "Habit schedules and milestones"), plus server-owned fields: `currentStreak`, `bestStreak`, `lastCheckInDate`, `milestonesEarned`, `nextDays`, `nextDaysFrom`, `pastDays`.
+- `users/{uid}/habits/{habitId}/checkIns/{localDate}`: the **document ID is the date** (`YYYY-MM-DD`, in the user's timezone). One document per habit per day, so a second check-in for the same day cannot exist. It also records `milestonesAdded`, so undoing it takes back exactly those milestones.
 - `users/{uid}/habits/{habitId}/freezeUses/{localDate}`: a freeze counts as a completed day when working out streaks.
 - `users/{uid}/pushTokens/{tokenId}`: `token` (FCM web push token), `createdAt`, `userAgent`. One user can have several devices.
 
@@ -49,6 +49,33 @@ Where these rules say "callable" or "callable function", read a POST route handl
 8. **Nightly reset.** A scheduled function runs **every 15 minutes** and queries users where `nextRolloverAt <= now`, so each person's day ends at their own midnight. For each of their habits that was not done on the day that just ended: if `freezesAvailable > 0` and exactly one day was missed, spend a freeze (decrement, write `freezeUses`) and keep the streak; otherwise set `currentStreak` to 0. Then move `nextRolloverAt` to the next local midnight. This makes the job idempotent: running it twice changes nothing the second time. Put the logic in an exported `runRollover(now)` and keep the scheduler wrapper thin, so tests can pass in a fake clock. Process users in pages, and handle one user's failure without stopping the rest.
 9. **Reminders by push notification** (last phase), using Firebase Cloud Messaging web push. No email and no domain. Callables `registerPushToken({ token })` and `removePushToken({ token })` save and remove tokens for the signed-in user. A scheduled function runs every 15 minutes, finds users with `reminderEnabled` whose local time has passed `reminderTime`, who have unchecked habits today and whose `lastReminderDate` is not today, then sends one notification ("3 habits left today. Keep your 12 day streak alive.") to each of their tokens with `sendEachForMulticast` and sets `lastReminderDate`. Delete tokens that FCM reports as unregistered or invalid. Same pattern as the rollover: exported `runReminders(now, sender)` with a thin wrapper, and a fake sender in tests.
 10. Secrets and service accounts go in function config or environment, never in git or the browser. The Firebase web config and the FCM VAPID public key are not secret, but keep them in env vars.
+
+## Habit schedules and milestones (added after the first release)
+
+Design reference: `docs/design/schedules-milestones-prototype.html` (only these two features; read the rules in its top comment).
+
+**Schedules.**
+- `days` lists the weekdays a habit is due: 1 to 7 unique numbers, 0 = Monday to 6 = Sunday. A habit without `days` is due every day, so habits from before schedules need no migration.
+- The weekday always comes from the user's own timezone and local date.
+- A day that is not scheduled is a **rest day**. It cannot be checked in: `/api/check-in` answers 409 with code `NOT_SCHEDULED`. It never breaks a streak and never uses a freeze.
+- Streaks count scheduled days only. A scheduled day is missed only if it ended with no check-in and no freeze.
+- Clients choose `days` only when creating a habit. After that, `POST /api/update-habit-days { habitId, days }` stores the change as `nextDays` from `nextDaysFrom`, which is tomorrow in the user's timezone, so today's streak is judged by the days it started with.
+- When that date arrives the change becomes `days`, and the old days are kept in `pastDays` (`{ until, days }`), so past days are always judged by the schedule that applied then.
+- `scheduledOn(habit, date)` in `@streaks/core` is the single rule for check-in, rollover, catch-up, reminders and the UI (the app imports it from `@streaks/core/schedule`).
+
+**Milestones.**
+- Milestones are 3, 7, 14, 30, 60, 100 and 365 (`MILESTONES` in `@streaks/core`).
+- A check-in earns every milestone up to the new streak that is not yet in `milestonesEarned`, and `/api/check-in` returns the highest as `milestoneReached` (else null). Only that value opens the celebration.
+- The list never shrinks on a reset, so reaching 7 again later does not celebrate again.
+- Undoing the check-in that earned a milestone removes it and restores the streak stats.
+- Habits from before milestones are backfilled silently from `bestStreak` (every milestone at or below it), with no celebration.
+
+**Rollover and reminders.**
+- The rollover closes every day since `lastClosedDate` in order (at most a week back), skipping rest days.
+- A freeze is spent on a missed scheduled day whose previous scheduled day was done.
+- The reminders job counts only habits scheduled today, so a day where everything rests sends nothing.
+
+**Rules.** Clients may set `days` (validated) and an empty `milestonesEarned` when creating a habit, and nothing else of these. `days` after creation, `nextDays`, `nextDaysFrom`, `pastDays`, `milestonesEarned` and the streak fields are server-only.
 
 ## Frontend behaviour
 
