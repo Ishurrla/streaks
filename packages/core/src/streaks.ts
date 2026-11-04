@@ -35,12 +35,22 @@ export function addDays(date: string, days: number): string {
   return new Date((n + days) * DAY_MS).toISOString().slice(0, 10);
 }
 
+const fromDayNumber = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
+
 /**
+ * Streaks count scheduled days only: a rest day neither adds to a run nor breaks it.
+ *
  * @param checkInDates days the habit was done
  * @param freezeDates days covered by a streak freeze; they count as completed
  * @param today the user's current local date
+ * @param isScheduled whether the habit is due on a date (scheduledOn); every day if left out
  */
-export function computeStreaks(checkInDates: readonly string[], freezeDates: readonly string[], today: string): StreakStats {
+export function computeStreaks(
+  checkInDates: readonly string[],
+  freezeDates: readonly string[],
+  today: string,
+  isScheduled: (date: string) => boolean = () => true,
+): StreakStats {
   const todayN = dayNumber(today);
   if (Number.isNaN(todayN)) throw new Error(`Invalid date: ${today}`);
 
@@ -52,21 +62,23 @@ export function computeStreaks(checkInDates: readonly string[], freezeDates: rea
   const checkIns = checkInDates.filter(valid);
   const done = new Set<number>([...checkIns, ...freezeDates.filter(valid)].map(dayNumber));
 
+  // Walk every day from the first completed one to today. A scheduled day that was done
+  // extends the run; one that was missed ends it, except today, which is still open
+  // ("at risk"). So the run left at the end is the current streak.
   let bestStreak = 0;
   let run = 0;
-  let prev = NaN;
-  for (const n of [...done].sort((a, b) => a - b)) {
-    run = n === prev + 1 ? run + 1 : 1;
-    if (run > bestStreak) bestStreak = run;
-    prev = n;
+  if (done.size > 0) {
+    for (let n = Math.min(...done); n <= todayN; n++) {
+      if (!isScheduled(fromDayNumber(n))) continue;
+      if (done.has(n)) {
+        run++;
+        if (run > bestStreak) bestStreak = run;
+      } else if (n !== todayN) {
+        run = 0;
+      }
+    }
   }
-
-  let currentStreak = 0;
-  let cursor = done.has(todayN) ? todayN : todayN - 1;
-  while (done.has(cursor)) {
-    currentStreak++;
-    cursor--;
-  }
+  const currentStreak = run;
 
   const lastCheckInDate = checkIns.length === 0 ? null : checkIns.reduce((a, b) => (a > b ? a : b));
 
