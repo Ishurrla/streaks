@@ -27,6 +27,20 @@
   --moon: #4f63d2;
   --ts-ghost: #9aa5bc;
   --ts-on: 0;
+  /* Landing navbar's floating capsule, from docs/design/landing-navbar-prototype.html. */
+  --pill: #12201c;
+  --pill-ink: #ffffff;
+  --pill-muted: #d3e2dc;
+  --pill-edge: rgba(255, 255, 255, 0.08);
+  --pill-highlight: rgba(255, 255, 255, 0.13);
+  --pill-ring: #ffffff;
+  --pill-btn: #ffffff;
+  --pill-btn-ink: #12201c;
+  --pill-flame: #f2780c;
+  --pill-sun: #ffb23e;
+  --pill-moon: #a9b6ff;
+  --pill-shadow: 0 10px 26px rgba(18, 32, 28, 0.22), 0 2px 6px rgba(18, 32, 28, 0.18);
+  --pill-shadow-deep: 0 16px 38px rgba(18, 32, 28, 0.34), 0 3px 8px rgba(18, 32, 28, 0.22);
   --shadow: 0 1px 2px rgba(18, 32, 28, 0.06), 0 8px 24px rgba(18, 32, 28, 0.07);
   color-scheme: light;
 }
@@ -54,6 +68,10 @@
     --moon: #5b72e8;
     --ts-ghost: #8a96b8;
     --ts-on: 1;
+    --pill: #1f312b;
+    --pill-edge: rgba(255, 255, 255, 0.1);
+    --pill-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+    --pill-shadow-deep: 0 16px 38px rgba(0, 0, 0, 0.6), 0 3px 8px rgba(0, 0, 0, 0.4);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -81,6 +99,10 @@
   --moon: #5b72e8;
   --ts-ghost: #8a96b8;
   --ts-on: 1;
+  --pill: #1f312b;
+  --pill-edge: rgba(255, 255, 255, 0.1);
+  --pill-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --pill-shadow-deep: 0 16px 38px rgba(0, 0, 0, 0.6), 0 3px 8px rgba(0, 0, 0, 0.4);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -975,10 +997,18 @@
     font-size: 14px;
   }
 
-  /* Landing navbar, from docs/design/landing-navbar-prototype.html. */
-  html:has(.l-head) {
-    /* Anchors and keyboard focus land below the sticky bar. */
-    scroll-padding-top: 84px;
+  /* Landing navbar, from docs/design/landing-navbar-prototype.html: a floating capsule. The
+     header around it is only there to place it, and lets clicks through to the page. */
+  @media (prefers-reduced-motion: no-preference) {
+    html.l-smooth {
+      scroll-behavior: smooth;
+    }
+  }
+  /* Anchors and keyboard focus land below the floating capsule. */
+  #main,
+  #main a,
+  #main button {
+    scroll-margin-top: 84px;
   }
   .skip-link {
     position: fixed;
@@ -990,97 +1020,129 @@
     min-height: 44px;
     padding: 0 16px;
     border-radius: 999px;
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--pill-btn);
+    color: var(--pill-btn-ink);
     font-weight: 700;
     transition: top 0.15s;
   }
   .skip-link:focus {
-    top: 10px;
+    top: 12px;
+    box-shadow: var(--pill-shadow);
   }
   .l-head {
     position: sticky;
     top: 0;
     z-index: 20;
-    border-bottom: 1px solid transparent;
-    transition:
-      background 0.25s,
-      border-color 0.25s,
-      box-shadow 0.25s;
+    padding: 12px 12px 0;
+    pointer-events: none;
   }
-  .l-head.scrolled {
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    backdrop-filter: blur(12px);
-    border-bottom-color: var(--line);
-    box-shadow: 0 6px 18px rgba(18, 32, 28, 0.06);
-  }
-  .l-nav {
+  .l-pill {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    max-width: 1120px;
-    min-height: 64px;
-    margin: 0 auto;
-    padding: 8px 20px;
+    gap: 2px;
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--pill-edge);
+    border-radius: 999px;
+    background: var(--pill);
+    color: var(--pill-ink);
+    box-shadow: var(--pill-shadow);
+    pointer-events: auto;
+    transition: box-shadow 0.25s;
+  }
+  .l-head.scrolled .l-pill {
+    box-shadow: var(--pill-shadow-deep);
+  }
+  .l-pill :focus-visible {
+    outline: 3px solid var(--pill-ring);
+    outline-offset: 2px;
+    border-radius: 999px;
   }
   .l-logo {
     display: flex;
+    flex: none;
     align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    min-width: 44px;
+    gap: 10px;
+    border-radius: 999px;
     font-family: var(--font-display);
-    font-size: 21px;
+    font-size: 19px;
     font-weight: 800;
   }
-  .l-logo .flame {
-    width: 26px;
-    height: 26px;
+  .l-chip {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--pill-btn);
+    /* The chip is white in both themes, so its flame keeps the light theme's colour. */
+    --flame: var(--pill-flame);
+    transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .l-chip .flame {
+    width: 24px;
+    height: 24px;
     animation: l-flicker 2.4s ease-in-out infinite;
-    transition: scale 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
   }
-  .l-logo:hover .flame {
-    scale: 1.18;
+  .l-word,
+  .l-link {
+    display: none;
   }
-  .l-logo-word {
-    max-width: 100px;
-    overflow: hidden;
-    transition:
-      max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 0.25s;
-  }
-  .l-actions {
-    display: flex;
+  .l-link {
+    position: relative;
+    z-index: 0;
     align-items: center;
-    gap: 4px;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    color: var(--pill-muted);
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+  .l-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 999px;
+    background: var(--pill-highlight);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .l-link:hover,
+  .l-link:focus-visible {
+    color: var(--pill-ink);
+  }
+  .l-link:hover::before,
+  .l-link:focus-visible::before {
+    opacity: 1;
   }
   .theme-btn {
     position: relative;
     display: grid;
-    place-items: center;
     flex: none;
+    place-items: center;
     width: 44px;
     height: 44px;
+    margin-left: auto;
     border-radius: 50%;
-    transition:
-      background 0.2s,
-      width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 0.25s;
+    transition: background 0.2s;
   }
   .theme-btn:hover {
-    background: color-mix(in srgb, var(--ink) 8%, transparent);
+    background: var(--pill-highlight);
   }
   .theme-btn svg {
     position: absolute;
-    width: 22px;
-    height: 22px;
+    width: 21px;
+    height: 21px;
     transition:
       transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
       opacity 0.25s;
   }
   .tb-sun {
-    color: var(--sun);
+    color: var(--pill-sun);
     opacity: calc(1 - var(--ts-on));
     transform: rotate(calc(var(--ts-on) * 70deg)) scale(calc(1 - var(--ts-on) * 0.5));
   }
@@ -1088,47 +1150,22 @@
     fill: currentColor;
   }
   .tb-moon {
-    color: var(--moon);
+    color: var(--pill-moon);
     fill: currentColor;
     opacity: var(--ts-on);
     transform: rotate(calc((var(--ts-on) - 1) * 70deg)) scale(calc(0.5 + var(--ts-on) * 0.5));
   }
-  .l-login {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 12px;
-    border-radius: 999px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .l-login::after {
-    content: "";
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: 9px;
-    height: 2px;
-    border-radius: 2px;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  .l-login:hover::after,
-  .l-login:focus-visible::after {
-    transform: scaleX(1);
-  }
   .l-cta {
     display: inline-flex;
+    flex: none;
     align-items: center;
     gap: 6px;
     min-height: 44px;
-    padding: 0 16px;
+    margin-left: 2px;
+    padding: 0 18px;
     border-radius: 999px;
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--pill-btn);
+    color: var(--pill-btn-ink);
     font-weight: 700;
     white-space: nowrap;
     transition:
@@ -1136,10 +1173,7 @@
       box-shadow 0.2s;
   }
   .l-cta:hover {
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
-  }
-  .l-cta:active {
-    transform: scale(0.97);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--pill-btn) 28%, transparent);
   }
   .l-cta svg {
     flex: none;
@@ -1147,67 +1181,43 @@
     height: 16px;
     transition: transform 0.2s;
   }
-  .l-cta:hover svg {
-    transform: translateX(3px);
-  }
-  /* Phones: Get started waits until the hero's button has scrolled away, then the theme
-     button steps aside. Visibility, not just size, so whatever is hidden cannot be focused. */
-  @media (max-width: 639.98px) {
-    .l-cta.later {
-      max-width: 0;
-      padding: 0;
-      opacity: 0;
-      overflow: hidden;
-      visibility: hidden;
-      pointer-events: none;
-      transition:
-        max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-        padding 0.35s,
-        opacity 0.25s,
-        visibility 0s linear 0.35s;
+  /* Movement on hover and press, none of it for reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    .l-logo:hover .l-chip {
+      transform: scale(1.08) rotate(-6deg);
     }
-    .l-head.show-cta .l-cta.later {
-      max-width: 170px;
-      padding: 0 16px;
-      opacity: 1;
-      visibility: visible;
-      pointer-events: auto;
-      transition:
-        max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-        padding 0.35s,
-        opacity 0.25s,
-        visibility 0s;
+    .l-cta:active {
+      transform: scale(0.97);
     }
-    .l-head.show-cta .theme-btn {
-      width: 0;
-      opacity: 0;
-      overflow: hidden;
-      visibility: hidden;
-      pointer-events: none;
-      transition:
-        background 0.2s,
-        width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-        opacity 0.25s,
-        visibility 0s linear 0.35s;
+    .l-cta:hover svg {
+      transform: translateX(3px);
     }
   }
-  /* The narrowest phones keep only the flame where the wordmark would not fit. The link keeps
-     the name "Streaks home" either way. */
-  @media (max-width: 399.98px) {
-    .l-nav {
-      padding-inline: 16px;
+  /* Wider screens: the capsule shrinks to its content and floats in the middle. */
+  @media (min-width: 640px) {
+    .l-head {
+      display: flex;
+      justify-content: center;
+      padding-top: 16px;
     }
-  }
-  @media (max-width: 379.98px) {
-    .l-head.show-cta .l-logo-word {
-      max-width: 0;
-      opacity: 0;
+    .l-pill {
+      width: fit-content;
+      gap: 4px;
+      padding: 7px;
     }
-  }
-  @media (max-width: 359.98px) {
-    .l-logo-word {
-      max-width: 0;
-      opacity: 0;
+    .l-word {
+      display: inline;
+      padding-right: 6px;
+    }
+    .l-link {
+      display: inline-flex;
+      margin-left: 10px;
+    }
+    .theme-btn {
+      margin-left: 0;
+    }
+    .l-cta {
+      margin-left: 6px;
     }
   }
 

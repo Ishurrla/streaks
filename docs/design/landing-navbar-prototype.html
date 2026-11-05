@@ -12,20 +12,24 @@ DESIGN REFERENCE: only the landing page NAVBAR. Not the whole page.
 Everything under the navbar here is grey placeholder, it only exists so the scroll behaviour can be seen.
 Reuse the existing landing page, tokens, logo flame and theme logic. Do not copy the prototype bar or placeholder blocks.
 
-WHAT CHANGED AND WHY (it felt crowded)
-- Four boxed things became one quiet row: logo, a small round theme button, a plain-text "Log in" link, and ONE filled button "Get started".
-- The wide sun/moon track switch is replaced in the navbar by a 44px round icon button (sun and moon swap with a small turn). Same behaviour: role="switch", aria-checked = dark, remembers choice in localStorage "streaks-theme", first visit follows the device.
-- "Log in" is no longer an outlined button. It is a text link with an underline that draws in on hover/focus.
-- PHONE (narrow): at the top only logo, theme button and "Log in" are shown. "Get started" is already the big button in the hero, so it slides into the navbar only after the hero button has scrolled out of view. No duplicate calls to action. When it slides in, the theme button steps aside (so the bar never gets crowded) and comes back at the top of the page.
-- DESKTOP (wide): all four are shown from the start.
-- The bar is transparent on the page background at the top. After scrolling a little it gets a soft surface background (blurred), a thin bottom border and a light shadow. Sticky at the top.
-- Small life: the logo flame flickers softly and grows on hover, the theme icon turns when switched, the button arrow nudges on hover. All respect prefers-reduced-motion.
-- Accessibility: header with nav landmark, "Skip to content" link, every target at least 44px, visible focus rings, buttons have text or aria-labels.
+STYLE: a floating dark capsule ("pill") that hovers over the page, like a compact island.
+- Pill: fully rounded, dark (--pill), light text, soft shadow under it, 1px faint edge. It floats 12px from the top and is sticky.
+- Desktop (wide): the pill is only as wide as its content and centred. Inside, left to right:
+  round white logo chip with the flame (44px) + "Streaks" wordmark, one text link ("Features"), a round theme button, and ONE white pill button "Get started" with an arrow.
+- There is NO "Log in" in the navbar on any screen size. People log in from the sign-in screen that "Get started" opens (it must keep its Sign up / Log in switch).
+- Phone (narrow): the pill spans the width with 12px side margins. Inside: logo chip only (no wordmark), then on the right the theme button and "Get started". The "Features" link is hidden on phone.
+- Link: a soft light capsule fades in behind "Features" when it is hovered or focused.
+- Theme button: 44px round icon button (sun and moon swap with a small turn). Same behaviour as the app: role="switch", aria-checked = dark, localStorage key "streaks-theme", first visit follows the device. Replaces the wide track switch in the navbar only.
+- Scroll: the pill stays the same shape; its shadow gets a little deeper after scrolling.
+- Life: flame in the logo chip flickers softly and grows on hover; arrow on the button nudges on hover. All motion respects prefers-reduced-motion.
+- Accessibility: header with a nav landmark, "Skip to content" link, every target at least 44px, visible focus rings, text/background contrast checked.
+- Colours (light mode): pill #12201C, link text #D3E2DC, button white with #12201C text. (dark mode): pill #1F312B on the darker page so it still reads as a floating object. Button stays white.
 -->
 <style>
 :root{
   --bg:#EAF1EE; --surface:#FFFFFF; --ink:#12201C; --muted:#586C66; --line:#D5E1DC;
-  --accent:#13795B; --accent-ink:#FFFFFF; --flame:#F2780C; --sun:#F59A0C; --moon:#4F63D2;
+  --accent:#13795B; --accent-ink:#FFFFFF; --flame:#F2780C; --sun:#FFB23E; --moon:#A9B6FF;
+  --pill:#12201C; --pill-ink:#FFFFFF; --pill-muted:#D3E2DC; --pill-edge:rgba(255,255,255,.08);
   --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
   --body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --shadow:0 1px 2px rgba(18,32,28,.06),0 8px 24px rgba(18,32,28,.07);
@@ -34,14 +38,16 @@ WHAT CHANGED AND WHY (it felt crowded)
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#0C1513; --surface:#16231F; --ink:#E8F2EE; --muted:#97ADA6; --line:#26372F;
-    --accent:#3DD6A3; --accent-ink:#06201A; --flame:#FFA03D; --moon:#7C8FF0;
+    --accent:#3DD6A3; --accent-ink:#06201A; --flame:#FFA03D;
+    --pill:#1F312B; --pill-edge:rgba(255,255,255,.1);
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0C1513; --surface:#16231F; --ink:#E8F2EE; --muted:#97ADA6; --line:#26372F;
-  --accent:#3DD6A3; --accent-ink:#06201A; --flame:#FFA03D; --moon:#7C8FF0;
+  --accent:#3DD6A3; --accent-ink:#06201A; --flame:#FFA03D;
+  --pill:#1F312B; --pill-edge:rgba(255,255,255,.1);
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
   color-scheme:dark;
 }
@@ -60,56 +66,56 @@ h1,h2{font-family:var(--display);letter-spacing:-.01em}
 
 /* the preview frame: the navbar reacts to the frame width, so you can compare phone and desktop here */
 .stage{padding:18px 12px 28px;display:flex;justify-content:center}
-.frame{width:100%;max-width:var(--fw,390px);height:min(620px,calc(100vh - 120px));min-height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;position:relative;container-type:inline-size;transition:max-width .35s cubic-bezier(.2,.8,.2,1);scroll-behavior:smooth}
+.frame{width:100%;max-width:var(--fw,390px);height:min(620px,calc(100vh - 120px));min-height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;position:relative;container-type:inline-size;transition:max-width .35s cubic-bezier(.2,.8,.2,1)}
 
 /* ---------- THE NAVBAR (this is the feature) ---------- */
-.skip{position:absolute;left:12px;top:-60px;background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:999px;font-weight:700;text-decoration:none;z-index:10;transition:top .15s}
-.skip:focus{top:10px}
-.l-head{position:sticky;top:0;z-index:5;border-bottom:1px solid transparent;transition:background .25s,border-color .25s,box-shadow .25s,backdrop-filter .25s}
-.l-head.scrolled{background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom-color:var(--line);box-shadow:0 6px 18px rgba(18,32,28,.06)}
-.l-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:1120px;margin:0 auto;padding:8px 16px;min-height:64px}
-.logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:21px;text-decoration:none;border-radius:10px;padding:4px 2px}
-.logo .flame{width:26px;height:26px;transform-origin:50% 90%;animation:flicker 2.4s ease-in-out infinite;transition:scale .25s cubic-bezier(.3,1.6,.5,1)}
-.logo:hover .flame{scale:1.18}
-@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg)}35%{transform:scale(1.07,1.1) rotate(2deg)}65%{transform:scale(.97,1.03) rotate(-1deg)}}
-.r{display:flex;align-items:center;gap:4px}
+.skip{position:absolute;left:12px;top:-60px;background:#fff;color:#12201C;padding:10px 16px;border-radius:999px;font-weight:700;text-decoration:none;z-index:10;transition:top .15s}
+.skip:focus{top:12px}
+.l-head{position:sticky;top:0;z-index:5;padding:12px 12px 0;pointer-events:none}
+.pill{pointer-events:auto;display:flex;align-items:center;gap:2px;width:100%;padding:6px;border-radius:999px;background:var(--pill);color:var(--pill-ink);border:1px solid var(--pill-edge);box-shadow:0 10px 26px rgba(18,32,28,.22),0 2px 6px rgba(18,32,28,.18);transition:box-shadow .25s}
+.l-head.scrolled .pill{box-shadow:0 16px 38px rgba(18,32,28,.34),0 3px 8px rgba(18,32,28,.22)}
+.pill :focus-visible{outline:3px solid #fff;outline-offset:2px}
 
-/* round theme button */
-.theme{position:relative;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--ink);transition:background .2s}
-.theme:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
-.theme svg{position:absolute;width:22px;height:22px;transition:transform .45s cubic-bezier(.3,1.4,.5,1),opacity .25s}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;border-radius:999px;color:var(--pill-ink);font-family:var(--display);font-weight:800;font-size:19px;padding-right:6px}
+.chip{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.logo:hover .chip{transform:scale(1.08) rotate(-6deg)}
+.chip .flame{width:24px;height:24px;transform-origin:50% 90%;animation:flicker 2.4s ease-in-out infinite}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg)}35%{transform:scale(1.07,1.1) rotate(2deg)}65%{transform:scale(.97,1.03) rotate(-1deg)}}
+.logo .word{display:none}
+
+.links{position:relative;display:none;align-items:center}
+.hl{position:absolute;top:0;left:0;height:100%;width:0;border-radius:999px;background:rgba(255,255,255,.13);opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.2,.8,.2,1),width .28s cubic-bezier(.2,.8,.2,1),opacity .2s}
+.link{position:relative;z-index:1;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;color:var(--pill-muted);font-weight:500;text-decoration:none;white-space:nowrap;border-radius:999px;transition:color .2s}
+.link:hover,.link:focus-visible{color:#fff}
+.link.hide-sm{display:none}
+
+.theme{position:relative;margin-left:auto;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;transition:background .2s}
+.theme:hover{background:rgba(255,255,255,.13)}
+.theme svg{position:absolute;width:21px;height:21px;transition:transform .45s cubic-bezier(.3,1.4,.5,1),opacity .25s}
 .theme .sun{color:var(--sun)}
 .theme .moon{color:var(--moon);opacity:0;transform:rotate(-70deg) scale(.5)}
 .theme[aria-checked="true"] .sun{opacity:0;transform:rotate(70deg) scale(.5)}
 .theme[aria-checked="true"] .moon{opacity:1;transform:none}
 
-/* text link */
-.link{position:relative;display:inline-flex;white-space:nowrap;align-items:center;min-height:44px;padding:0 12px;font-weight:700;text-decoration:none;border-radius:999px}
-.link::after{content:"";position:absolute;left:12px;right:12px;bottom:9px;height:2px;border-radius:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
-.link:hover::after,.link:focus-visible::after{transform:scaleX(1)}
-
-/* the one filled button */
-.cta{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none;white-space:nowrap;transition:transform .12s,box-shadow .2s}
-.cta:hover{box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 35%,transparent)}
+.cta{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 18px;margin-left:2px;border-radius:999px;background:#fff;color:#12201C;font-weight:700;text-decoration:none;white-space:nowrap;flex:none;transition:transform .12s,box-shadow .2s}
+.cta:hover{box-shadow:0 4px 14px rgba(255,255,255,.28)}
 .cta:active{transform:scale(.97)}
 .cta svg{width:16px;height:16px;transition:transform .2s}
 .cta:hover svg{transform:translateX(3px)}
 
-/* phone: Get started is hidden until the hero button has scrolled away */
-.cta.later{max-width:0;padding:0;opacity:0;overflow:hidden;pointer-events:none;visibility:hidden;margin-left:0;transition:max-width .35s cubic-bezier(.2,.8,.2,1),padding .35s,opacity .25s,margin .35s,visibility 0s linear .35s}
-.l-head.showcta .cta.later{max-width:170px;padding:0 16px;opacity:1;pointer-events:auto;visibility:visible;margin-left:4px;transition:max-width .35s cubic-bezier(.2,.8,.2,1),padding .35s,opacity .25s,margin .35s,visibility 0s}
-/* on a phone, once Get started appears, the theme button steps aside to keep the bar calm (it is back at the top of the page) */
-.theme{transition:background .2s,width .35s cubic-bezier(.2,.8,.2,1),opacity .25s,visibility 0s}
-.l-head.showcta .theme{width:0;opacity:0;overflow:hidden;visibility:hidden;pointer-events:none;transition:background .2s,width .35s cubic-bezier(.2,.8,.2,1),opacity .25s,visibility 0s linear .35s}
+/* wide: the pill shrinks to its content and floats in the middle */
 @container (min-width:640px){
-  .l-head.showcta .theme{width:44px;opacity:1;overflow:visible;visibility:visible;pointer-events:auto}
-  .cta.later{max-width:none;padding:0 18px;opacity:1;pointer-events:auto;visibility:visible;margin-left:6px}
-  .l-nav{padding:10px 28px;min-height:72px}
-  .r{gap:6px}
+  .l-head{padding-top:16px;display:flex;justify-content:center}
+  .pill{width:fit-content;gap:4px;padding:7px 7px 7px 7px}
+  .logo .word{display:inline;margin-left:0}
+  .links{display:flex;margin-left:10px}
+  .theme{margin-left:0}
+  .cta{margin-left:6px}
+  .link.hide-sm{display:inline-flex}
 }
 
 /* ---------- placeholder page content, only to show the scroll ---------- */
-.ph{max-width:1120px;margin:0 auto;padding:28px 20px 60px;display:grid;gap:18px}
+.ph{max-width:1120px;margin:0 auto;padding:36px 20px 60px;display:grid;gap:18px}
 .ph .tag{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
 .ph h1{font-size:clamp(34px,9cqw,60px);line-height:1;font-weight:800;max-width:14ch}
 .ph .bar{height:14px;border-radius:8px;background:var(--line);max-width:46ch}
@@ -117,8 +123,8 @@ h1,h2{font-family:var(--display);letter-spacing:-.01em}
 .ph .hero-cta{display:inline-flex;align-self:start;justify-self:start;align-items:center;min-height:52px;padding:0 24px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;margin-top:6px;text-decoration:none}
 .ph .block{height:170px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow)}
 .ph .row{display:grid;gap:14px;grid-template-columns:1fr}
-@container (min-width:640px){.ph .row{grid-template-columns:repeat(3,1fr)}.ph{padding:48px 28px 80px}}
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@container (min-width:640px){.ph .row{grid-template-columns:repeat(3,1fr)}.ph{padding:56px 28px 80px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -126,26 +132,27 @@ h1,h2{font-family:var(--display);letter-spacing:-.01em}
   <b>Preview width</b>
   <button type="button" data-w="390" aria-pressed="true">Phone</button>
   <button type="button" data-w="1000" aria-pressed="false">Desktop</button>
-  <span>Scroll inside the frame to see the bar change.</span>
+  <span>Scroll inside the frame. Hover "Features".</span>
 </div>
 
 <div class="stage">
   <div class="frame" id="frame">
     <a class="skip" href="#main">Skip to content</a>
     <header class="l-head" id="head">
-      <nav class="l-nav" aria-label="Main">
+      <nav class="pill" aria-label="Main">
         <a class="logo" href="#top" aria-label="Streaks home">
-          <svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.9 3.6 5.2 5.9 5.2 11a5.2 5.2 0 0 1-10.4 0c0-2.2 1-3.6 2.1-4.7.3 1.4 1 2.2 1.8 2.5C10.2 7.5 10.6 4.2 12 1.5z" fill="var(--flame)"/><path d="M12 21.5a3.2 3.2 0 0 1-3.2-3.2c0-1.8 1.5-2.7 2.1-4.2.5.9 1.1 1.3 1.7 1.3.1-1 .8-1.7 1.3-2.2.8 1.1 1.3 2.3 1.3 5.1a3.2 3.2 0 0 1-3.2 3.2z" fill="#FFD27A"/></svg>
-          Streaks
+          <span class="chip"><svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.9 3.6 5.2 5.9 5.2 11a5.2 5.2 0 0 1-10.4 0c0-2.2 1-3.6 2.1-4.7.3 1.4 1 2.2 1.8 2.5C10.2 7.5 10.6 4.2 12 1.5z" fill="#F2780C"/><path d="M12 21.5a3.2 3.2 0 0 1-3.2-3.2c0-1.8 1.5-2.7 2.1-4.2.5.9 1.1 1.3 1.7 1.3.1-1 .8-1.7 1.3-2.2.8 1.1 1.3 2.3 1.3 5.1a3.2 3.2 0 0 1-3.2 3.2z" fill="#FFD27A"/></svg></span>
+          <span class="word">Streaks</span>
         </a>
-        <div class="r">
-          <button class="theme" id="theme" type="button" role="switch" aria-checked="false" aria-label="Dark mode">
-            <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.100 17.100l1.600 1.600M5.300 18.700l1.600-1.600M17.100 6.900l1.600-1.600"/></svg>
-            <svg class="moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.500 14.500A8.500 8.500 0 0 1 9.500 3.500a8.500 8.500 0 1 0 11 11z"/></svg>
-          </button>
-          <a class="link" href="#login">Log in</a>
-          <a class="cta later" href="#start">Get started<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div class="links" id="links">
+          <span class="hl" id="hl" aria-hidden="true"></span>
+          <a class="link hide-sm" href="#features">Features</a>
         </div>
+        <button class="theme" id="theme" type="button" role="switch" aria-checked="false" aria-label="Dark mode">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+        </button>
+        <a class="cta" href="#start">Get started<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </nav>
     </header>
 
@@ -154,9 +161,9 @@ h1,h2{font-family:var(--display);letter-spacing:-.01em}
         <span class="tag">Placeholder for the rest of the landing page</span>
         <h1>Small habits. One streak at a time.</h1>
         <div class="bar"></div><div class="bar s"></div>
-        <a class="hero-cta" id="herocta" href="#start">Start your first streak</a>
+        <a class="hero-cta" href="#start">Start your first streak</a>
         <div class="block"></div>
-        <div class="row"><div class="block"></div><div class="block"></div><div class="block"></div></div>
+        <div class="row" id="features"><div class="block"></div><div class="block"></div><div class="block"></div></div>
         <div class="block"></div>
         <div class="block"></div>
       </div>
@@ -167,7 +174,7 @@ h1,h2{font-family:var(--display);letter-spacing:-.01em}
 <script>
 (function(){
 var KEY="streaks-theme",root=document.documentElement,btn=document.getElementById("theme");
-var frame=document.getElementById("frame"),head=document.getElementById("head"),hero=document.getElementById("herocta");
+var frame=document.getElementById("frame"),head=document.getElementById("head"),links=document.getElementById("links"),hl=document.getElementById("hl");
 function stored(){try{return localStorage.getItem(KEY)}catch(e){return null}}
 function dark(){var t=root.getAttribute("data-theme");if(t)return t==="dark";return matchMedia("(prefers-color-scheme: dark)").matches}
 function sync(){btn.setAttribute("aria-checked",String(dark()))}
@@ -179,21 +186,31 @@ btn.addEventListener("click",function(){
   try{localStorage.setItem(KEY,next)}catch(e){}
   sync();
 });
-function onScroll(){
-  head.classList.toggle("scrolled",frame.scrollTop>6);
-  var fr=frame.getBoundingClientRect(),hr=hero.getBoundingClientRect();
-  head.classList.toggle("showcta",hr.bottom<fr.top+head.offsetHeight);
+frame.addEventListener("scroll",function(){head.classList.toggle("scrolled",frame.scrollTop>6)},{passive:true});
+
+/* the soft highlight follows hover and keyboard focus */
+function moveTo(el){
+  var lr=links.getBoundingClientRect(),er=el.getBoundingClientRect();
+  hl.style.width=er.width+"px";hl.style.transform="translateX("+(er.left-lr.left)+"px)";hl.style.opacity="1";
 }
-frame.addEventListener("scroll",onScroll,{passive:true});
-onScroll();
+links.querySelectorAll(".link").forEach(function(a){
+  a.addEventListener("pointerenter",function(){moveTo(a)});
+  a.addEventListener("focus",function(){moveTo(a)});
+  a.addEventListener("blur",function(){hl.style.opacity="0"});
+});
+links.addEventListener("pointerleave",function(){hl.style.opacity="0"});
+
 document.querySelectorAll(".proto [data-w]").forEach(function(b){
   b.addEventListener("click",function(){
     document.querySelectorAll(".proto [data-w]").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});
     frame.style.setProperty("--fw",b.dataset.w+"px");
-    setTimeout(onScroll,380);
   });
 });
-document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener("click",function(e){e.preventDefault();var id=a.getAttribute("href").slice(1);if(id==="top"||id==="main"){frame.scrollTo({top:0})}})});
+document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener("click",function(e){
+  e.preventDefault();var id=a.getAttribute("href").slice(1);
+  if(id==="top"||id==="main"){frame.scrollTo({top:0,behavior:"smooth"})}
+  else if(id==="features"){var f=document.getElementById("features");frame.scrollTo({top:f.offsetTop-90,behavior:"smooth"})}
+})});
 })();
 </script>
 </body>

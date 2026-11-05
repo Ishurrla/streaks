@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CalendarIcon, CheckIcon, LockIcon, MoonIcon } from "@/components/icons";
-import { HERO_CTA_ID } from "@/components/landing/hero-cta-id";
 import { LandingDemo } from "@/components/landing/landing-demo";
 import { LandingHeader } from "@/components/landing/landing-header";
 
@@ -55,7 +54,7 @@ export default function LandingPage() {
               keep showing up.
             </p>
             <div className="flex flex-wrap gap-2.5">
-              <Link id={HERO_CTA_ID} className="btn" href="/signup">
+              <Link className="btn" href="/signup">
                 Start your first streak
               </Link>
               <a className="btn btn-ghost" href="#features">
@@ -77,7 +76,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="mx-auto max-w-280 scroll-mt-4 px-5 py-11">
+        <section id="features" className="mx-auto max-w-280 scroll-mt-21 px-5 py-11">
           <h2 className="mb-6 max-w-[18ch] text-[clamp(28px,4.5vw,42px)] font-extrabold">Built to keep you honest</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3.5">
             {FEATURES.map((f) => (

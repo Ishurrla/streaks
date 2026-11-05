@@ -1,69 +1,41 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HERO_CTA_ID } from "./hero-cta-id";
 import { LandingHeader } from "./landing-header";
 
 let authState: { status: string } = { status: "signedOut" };
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ state: authState }) }));
 
-type Entry = { isIntersecting: boolean; boundingClientRect: { top: number } };
-let report: (entry: Entry) => void;
-
 beforeEach(() => {
   authState = { status: "signedOut" };
   window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
-  vi.stubGlobal(
-    "IntersectionObserver",
-    class {
-      constructor(callback: (entries: Entry[]) => void) {
-        report = (entry) => callback([entry]);
-      }
-      observe() {}
-      disconnect() {}
-    },
-  );
-  const hero = document.createElement("a");
-  hero.id = HERO_CTA_ID;
-  document.body.appendChild(hero);
 });
 
-afterEach(() => {
-  cleanup();
-  document.getElementById(HERO_CTA_ID)?.remove();
-  vi.unstubAllGlobals();
-});
+afterEach(cleanup);
 
 const header = () => screen.getByRole("banner");
 
 describe("LandingHeader", () => {
-  it("keeps the routes and has a named nav and a skip link to the main content", () => {
+  it("has a named nav, a skip link, Features, the theme button and Get started", () => {
     render(<LandingHeader />);
     expect(screen.getByRole("navigation", { name: "Main" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Log in" }).getAttribute("href")).toBe("/login");
-    expect(screen.getByRole("link", { name: "Get started" }).getAttribute("href")).toBe("/signup");
     expect(screen.getByRole("link", { name: "Skip to content" }).getAttribute("href")).toBe("#main");
+    expect(screen.getByRole("link", { name: "Features" }).getAttribute("href")).toBe("#features");
+    expect(screen.getByRole("link", { name: "Get started" }).getAttribute("href")).toBe("/signup");
     expect(screen.getByRole("switch", { name: "Dark mode" })).toBeTruthy();
   });
 
-  it("offers Get started only after the hero button has scrolled up behind the bar", () => {
+  it("has no Log in on the navbar, signed out or in", () => {
+    const { unmount } = render(<LandingHeader />);
+    expect(screen.queryByRole("link", { name: "Log in" })).toBeNull();
+    unmount();
+
+    authState = { status: "signedIn" };
     render(<LandingHeader />);
-    expect(header().className).not.toContain("show-cta");
-
-    act(() => report({ isIntersecting: false, boundingClientRect: { top: -40 } }));
-    expect(header().className).toContain("show-cta");
-
-    act(() => report({ isIntersecting: true, boundingClientRect: { top: 200 } }));
-    expect(header().className).not.toContain("show-cta");
+    expect(screen.queryByRole("link", { name: "Log in" })).toBeNull();
   });
 
-  it("does not count a hero button that is still below the fold", () => {
-    render(<LandingHeader />);
-    act(() => report({ isIntersecting: false, boundingClientRect: { top: 900 } }));
-    expect(header().className).not.toContain("show-cta");
-  });
-
-  it("gets its surface after a small scroll", () => {
+  it("deepens the capsule's shadow after a small scroll", () => {
     render(<LandingHeader />);
     expect(header().className).not.toContain("scrolled");
     act(() => {
@@ -78,15 +50,17 @@ describe("LandingHeader", () => {
     expect(header().className).not.toContain("scrolled");
   });
 
-  it("shows someone signed in a way into the app, always, and no Log in", () => {
+  it("scrolls smoothly only while the page is on screen", () => {
+    const { unmount } = render(<LandingHeader />);
+    expect(document.documentElement.classList.contains("l-smooth")).toBe(true);
+    unmount();
+    expect(document.documentElement.classList.contains("l-smooth")).toBe(false);
+  });
+
+  it("offers someone signed in a way into the app instead of Get started", () => {
     authState = { status: "signedIn" };
     render(<LandingHeader />);
-    const open = screen.getByRole("link", { name: "Open Streaks" });
-    expect(open.getAttribute("href")).toBe("/today");
-    expect(open.className).not.toContain("later");
-    expect(screen.queryByRole("link", { name: "Log in" })).toBeNull();
-
-    act(() => report({ isIntersecting: false, boundingClientRect: { top: -40 } }));
-    expect(header().className).not.toContain("show-cta");
+    expect(screen.getByRole("link", { name: "Open Streaks" }).getAttribute("href")).toBe("/today");
+    expect(screen.queryByRole("link", { name: "Get started" })).toBeNull();
   });
 });

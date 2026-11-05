@@ -41,7 +41,7 @@ export function ThemeSwitch({ className = "" }: { className?: string }) {
 }
 
 /**
- * The same switch as a 44px round icon, for the landing page's navbar. Which icon shows also
+ * The same switch as a 44px round icon, for the landing page's capsule. Which icon shows also
  * comes from the theme on <html> in CSS, so it too is right on first paint.
  */
 export function ThemeButton({ className = "" }: { className?: string }) {
