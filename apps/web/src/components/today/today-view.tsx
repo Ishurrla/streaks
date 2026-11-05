@@ -214,8 +214,9 @@ export function TodayView() {
       ) : list.length === 0 ? (
         <EmptyToday onQuickAdd={quickAdd} onWriteOwn={() => setSheet({ mode: "new" })} />
       ) : (
-        <div className="grid gap-[18px] [grid-template-areas:'side''list'] desk:grid-cols-[minmax(0,1fr)_340px] desk:items-start desk:gap-7 desk:[grid-template-areas:'list_side']">
-          <div className="[grid-area:side] desk:sticky desk:top-9">
+        // Two columns only from 1180px: beside the sidebar, any earlier squeezes the habit cards.
+        <div className="grid gap-[18px] [grid-template-areas:'side''list'] min-[1180px]:grid-cols-[minmax(0,1fr)_340px] min-[1180px]:items-start min-[1180px]:gap-7 min-[1180px]:[grid-template-areas:'list_side']">
+          <div className="[grid-area:side] min-[1180px]:sticky min-[1180px]:top-9">
             <div className="flex items-center gap-[18px] rounded-[22px] bg-surface p-[18px] shadow-card">
               <div
                 className={`progress-ring ${allDone ? "full" : ""} ${celebrate ? "pulse" : ""}`}

@@ -103,6 +103,12 @@ test("app screens never scroll sideways", async ({ page }) => {
   await page.goto("/today");
   await page.locator(".habit-card").first().waitFor();
   await expectNoSideScroll(page, "Today");
+  // Not scrolling sideways is not enough: the cards must keep room for the habit name.
+  for (const width of [...WIDTHS, 1000, 1100, 1179, 1180]) {
+    await page.setViewportSize({ width, height: 860 });
+    const { width: nameWidth } = (await page.locator(".habit-card .name").first().boundingBox())!;
+    expect(nameWidth, `habit name at ${width}px`).toBeGreaterThanOrEqual(170);
+  }
 
   await page.goto("/progress");
   await page.getByText("Current streak").waitFor();
