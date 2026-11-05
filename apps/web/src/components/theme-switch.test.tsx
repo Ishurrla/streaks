@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyTheme, THEME_STORAGE_KEY } from "@/lib/theme";
-import { ThemeSwitch } from "./theme-switch";
+import { ThemeButton, ThemeSwitch } from "./theme-switch";
 
 /** jsdom has no matchMedia; this one reports the given device theme. */
 function deviceTheme(dark: boolean) {
@@ -24,22 +24,25 @@ afterEach(cleanup);
 
 const theSwitch = () => screen.getByRole("switch", { name: "Dark mode" });
 
-describe("ThemeSwitch", () => {
+describe.each([
+  ["ThemeSwitch", ThemeSwitch],
+  ["ThemeButton", ThemeButton],
+])("%s", (_name, Control) => {
   it("starts from the device theme when nothing is stored", () => {
     deviceTheme(true);
-    render(<ThemeSwitch />);
+    render(<Control />);
     expect(theSwitch().getAttribute("aria-checked")).toBe("true");
   });
 
   it("starts from a stored choice over the device theme", () => {
     deviceTheme(true);
     localStorage.setItem(THEME_STORAGE_KEY, "light");
-    render(<ThemeSwitch />);
+    render(<Control />);
     expect(theSwitch().getAttribute("aria-checked")).toBe("false");
   });
 
   it("flips aria-checked, sets the document theme and remembers the choice", () => {
-    render(<ThemeSwitch />);
+    render(<Control />);
     expect(theSwitch().getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(theSwitch());
@@ -54,7 +57,7 @@ describe("ThemeSwitch", () => {
   });
 
   it("works from the keyboard as a native button", () => {
-    render(<ThemeSwitch />);
+    render(<Control />);
     const button = theSwitch();
     expect(button.tagName).toBe("BUTTON");
     expect(button.getAttribute("type")).toBe("button");
@@ -64,7 +67,7 @@ describe("ThemeSwitch", () => {
 
   it("follows Settings: a saved theme wins, and Device forgets the choice", () => {
     deviceTheme(true);
-    render(<ThemeSwitch />);
+    render(<Control />);
 
     act(() => applyTheme("light"));
     expect(theSwitch().getAttribute("aria-checked")).toBe("false");

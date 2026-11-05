@@ -151,6 +151,14 @@ export function ChevronRight({ className }: IconProps) {
   );
 }
 
+export function ArrowRightIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...stroke} strokeWidth="2.5">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function InfoIcon({ className }: IconProps) {
   return (
     <svg className={className} {...stroke} strokeWidth="2">

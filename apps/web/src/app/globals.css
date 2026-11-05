@@ -48,12 +48,6 @@
     --google-fill: #131314;
     --google-stroke: #8e918f;
     --google-text: #e3e3e3;
-  --track: #4a5578;
-  --track-edge: #3a4464;
-  --knob: #f6f8fd;
-  --moon: #5b72e8;
-  --ts-ghost: #8a96b8;
-  --ts-on: 1;
     --track: #4a5578;
     --track-edge: #3a4464;
     --knob: #f6f8fd;
@@ -81,6 +75,12 @@
   --google-fill: #131314;
   --google-stroke: #8e918f;
   --google-text: #e3e3e3;
+  --track: #4a5578;
+  --track-edge: #3a4464;
+  --knob: #f6f8fd;
+  --moon: #5b72e8;
+  --ts-ghost: #8a96b8;
+  --ts-on: 1;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -975,6 +975,242 @@
     font-size: 14px;
   }
 
+  /* Landing navbar, from docs/design/landing-navbar-prototype.html. */
+  html:has(.l-head) {
+    /* Anchors and keyboard focus land below the sticky bar. */
+    scroll-padding-top: 84px;
+  }
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: -60px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+    transition: top 0.15s;
+  }
+  .skip-link:focus {
+    top: 10px;
+  }
+  .l-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid transparent;
+    transition:
+      background 0.25s,
+      border-color 0.25s,
+      box-shadow 0.25s;
+  }
+  .l-head.scrolled {
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom-color: var(--line);
+    box-shadow: 0 6px 18px rgba(18, 32, 28, 0.06);
+  }
+  .l-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    max-width: 1120px;
+    min-height: 64px;
+    margin: 0 auto;
+    padding: 8px 20px;
+  }
+  .l-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    min-width: 44px;
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 800;
+  }
+  .l-logo .flame {
+    width: 26px;
+    height: 26px;
+    animation: l-flicker 2.4s ease-in-out infinite;
+    transition: scale 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .l-logo:hover .flame {
+    scale: 1.18;
+  }
+  .l-logo-word {
+    max-width: 100px;
+    overflow: hidden;
+    transition:
+      max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.25s;
+  }
+  .l-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .theme-btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    transition:
+      background 0.2s,
+      width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.25s;
+  }
+  .theme-btn:hover {
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
+  }
+  .theme-btn svg {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    transition:
+      transform 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+      opacity 0.25s;
+  }
+  .tb-sun {
+    color: var(--sun);
+    opacity: calc(1 - var(--ts-on));
+    transform: rotate(calc(var(--ts-on) * 70deg)) scale(calc(1 - var(--ts-on) * 0.5));
+  }
+  .tb-sun circle {
+    fill: currentColor;
+  }
+  .tb-moon {
+    color: var(--moon);
+    fill: currentColor;
+    opacity: var(--ts-on);
+    transform: rotate(calc((var(--ts-on) - 1) * 70deg)) scale(calc(0.5 + var(--ts-on) * 0.5));
+  }
+  .l-login {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .l-login::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 9px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .l-login:hover::after,
+  .l-login:focus-visible::after {
+    transform: scaleX(1);
+  }
+  .l-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+    white-space: nowrap;
+    transition:
+      transform 0.12s,
+      box-shadow 0.2s;
+  }
+  .l-cta:hover {
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .l-cta:active {
+    transform: scale(0.97);
+  }
+  .l-cta svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+  }
+  .l-cta:hover svg {
+    transform: translateX(3px);
+  }
+  /* Phones: Get started waits until the hero's button has scrolled away, then the theme
+     button steps aside. Visibility, not just size, so whatever is hidden cannot be focused. */
+  @media (max-width: 639.98px) {
+    .l-cta.later {
+      max-width: 0;
+      padding: 0;
+      opacity: 0;
+      overflow: hidden;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+        padding 0.35s,
+        opacity 0.25s,
+        visibility 0s linear 0.35s;
+    }
+    .l-head.show-cta .l-cta.later {
+      max-width: 170px;
+      padding: 0 16px;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        max-width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+        padding 0.35s,
+        opacity 0.25s,
+        visibility 0s;
+    }
+    .l-head.show-cta .theme-btn {
+      width: 0;
+      opacity: 0;
+      overflow: hidden;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        background 0.2s,
+        width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 0.25s,
+        visibility 0s linear 0.35s;
+    }
+  }
+  /* The narrowest phones keep only the flame where the wordmark would not fit. The link keeps
+     the name "Streaks home" either way. */
+  @media (max-width: 399.98px) {
+    .l-nav {
+      padding-inline: 16px;
+    }
+  }
+  @media (max-width: 379.98px) {
+    .l-head.show-cta .l-logo-word {
+      max-width: 0;
+      opacity: 0;
+    }
+  }
+  @media (max-width: 359.98px) {
+    .l-logo-word {
+      max-width: 0;
+      opacity: 0;
+    }
+  }
+
   /* Sun and moon theme switch: a 72 by 36 track in a 44px-high button. */
   .theme-switch {
     display: inline-grid;
@@ -1133,6 +1369,18 @@
   }
   65% {
     transform: scale(0.96, 1.04) rotate(-1deg);
+  }
+}
+@keyframes l-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(-2deg);
+  }
+  35% {
+    transform: scale(1.07, 1.1) rotate(2deg);
+  }
+  65% {
+    transform: scale(0.97, 1.03) rotate(-1deg);
   }
 }
 @keyframes blink {

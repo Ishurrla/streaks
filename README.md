@@ -185,7 +185,7 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Cron endpoints: secret, both jobs | `apps/web/test/routes/cron.test.ts` | yes |
 | Google sign-in, linking, set password, delete (real client SDK, no popup) | `apps/web/test/routes/google-account.test.ts` | yes |
 | Web date, form, theme and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
-| Theme switch, password field and day picker (jsdom) | `apps/web/src/components/**/*.test.tsx` | no |
+| Theme switch, password field, day picker and landing navbar (jsdom) | `apps/web/src/components/**/*.test.tsx` | no |
 | No sideways scroll at 360 to 1280px, light and dark (real browser) | `apps/web/e2e/layout.spec.ts` | `pnpm dev` |
 
 The layout test is separate from `pnpm test` because it drives the running app. With `pnpm dev`

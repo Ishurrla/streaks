@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarIcon, CheckIcon, Flame, LockIcon, MoonIcon } from "@/components/icons";
+import { CalendarIcon, CheckIcon, LockIcon, MoonIcon } from "@/components/icons";
+import { HERO_CTA_ID } from "@/components/landing/hero-cta-id";
 import { LandingDemo } from "@/components/landing/landing-demo";
-import { LandingNavActions } from "@/components/landing/nav-actions";
-import { ThemeSwitch } from "@/components/theme-switch";
+import { LandingHeader } from "@/components/landing/landing-header";
 
-// Public landing page. A Server Component; only the demo card and the auth-aware
-// nav buttons run in the browser.
+// Public landing page. A Server Component; only the demo card and the navbar run in the browser.
 
 const FEATURES: { icon: ReactNode; title: string; body: string }[] = [
   {
@@ -42,20 +41,10 @@ const STEPS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-280 items-center justify-between gap-2.5 px-4 py-4 min-[400px]:px-5">
-        <div className="flex items-center gap-2 font-display text-xl font-extrabold">
-          <Flame live className="size-6.5!" />
-          {/* On the narrowest phones the flame alone leaves room for the switch and both buttons. */}
-          <span className="max-[399px]:sr-only">Streaks</span>
-        </div>
-        <nav aria-label="Account" className="flex items-center gap-2">
-          <ThemeSwitch />
-          <LandingNavActions />
-        </nav>
-      </header>
+    <div id="top" className="min-h-dvh">
+      <LandingHeader />
 
-      <main>
+      <main id="main" tabIndex={-1} className="focus:outline-none">
         <section className="mx-auto grid max-w-280 items-center gap-10 px-5 pt-7 pb-12 desk:grid-cols-[1.1fr_.9fr] desk:pt-14 desk:pb-20">
           <div>
             <h1 className="text-[clamp(40px,8vw,70px)] leading-none font-extrabold">
@@ -66,7 +55,7 @@ export default function LandingPage() {
               keep showing up.
             </p>
             <div className="flex flex-wrap gap-2.5">
-              <Link className="btn" href="/signup">
+              <Link id={HERO_CTA_ID} className="btn" href="/signup">
                 Start your first streak
               </Link>
               <a className="btn btn-ghost" href="#features">
