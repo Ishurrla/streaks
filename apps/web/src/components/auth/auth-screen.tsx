@@ -4,14 +4,14 @@ import { FirebaseError } from "firebase/app";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
-import { GoogleButton, Note, WelcomeTick } from "@/components/auth/google-sign-in";
+import { GitHubButton, GoogleButton, Note, WelcomeTick } from "@/components/auth/google-sign-in";
 import { Flame } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useToast } from "@/components/toast";
 import { existingMethodFor, useAuth, type ProviderSignIn } from "@/lib/auth";
 import { devWithEmulators, EMULATOR_PORTS, emulatorHost } from "@/lib/firebase";
-import { GOOGLE_PROVIDER, googleSignInNote, type AuthNote } from "@/lib/sign-in";
+import { GITHUB_PROVIDER, GOOGLE_PROVIDER, signInNote, type AuthNote, type PopupProvider } from "@/lib/sign-in";
 import {
   authErrorFromCode,
   isEmail,
@@ -27,6 +27,7 @@ const COPY = {
     title: "Keep the chain going.",
     lead: "Create your account in one tap, or use your email.",
     google: "Sign up with Google",
+    github: "Sign up with GitHub",
     submit: "Create account",
     busy: "Creating account…",
   },
@@ -34,6 +35,7 @@ const COPY = {
     title: "Welcome back.",
     lead: "Pick up where your streaks left off.",
     google: "Sign in with Google",
+    github: "Sign in with GitHub",
     submit: "Log in",
     busy: "Logging in…",
   },
@@ -100,26 +102,30 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
   const [busy, setBusy] = useState(false);
   // Bumped after each failed attempt, which hides the password again.
   const [failures, setFailures] = useState(0);
-  const [googleBusy, setGoogleBusy] = useState(false);
+  // Which provider's window is open, if any.
+  const [providerBusy, setProviderBusy] = useState<PopupProvider | null>(null);
   const [note, setNote] = useState<AuthNote | null>(null);
+  // The provider the note is about, which its "Try again" retries.
+  const [noteProvider, setNoteProvider] = useState<PopupProvider>(GOOGLE_PROVIDER);
   const [welcome, setWelcome] = useState<ProviderSignIn | null>(null);
-  // Holds the redirect below while Google sign-in finishes and the welcome tick plays.
-  const googleInProgress = useRef(false);
+  // Holds the redirect below while a Google or GitHub sign-in finishes and the welcome tick
+  // plays, and while a GitHub account with no email is being undone.
+  const providerInProgress = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const copy = COPY[mode];
   const signup = mode === "signup";
 
   // Already signed in (or just signed in): go to the app.
   useEffect(() => {
-    if (state.status === "signedIn" && !googleInProgress.current) router.replace(next);
+    if (state.status === "signedIn" && !providerInProgress.current) router.replace(next);
   }, [state.status, next, router]);
 
   // Next keeps this page mounted but hidden after leaving it, so start clean on coming back.
   useEffect(
     () => () => {
-      googleInProgress.current = false;
+      providerInProgress.current = false;
       setBusy(false);
-      setGoogleBusy(false);
+      setProviderBusy(null);
       setNote(null);
       setWelcome(null);
     },
@@ -168,25 +174,26 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
     }
   }
 
-  async function onGoogle() {
-    googleInProgress.current = true;
-    setGoogleBusy(true);
+  async function onProvider(provider: PopupProvider) {
+    providerInProgress.current = true;
+    setProviderBusy(provider);
     setNote(null);
     setErrors({});
     try {
-      setWelcome(await signInWith(GOOGLE_PROVIDER));
+      setWelcome(await signInWith(provider));
     } catch (err) {
-      googleInProgress.current = false;
+      providerInProgress.current = false;
       const code = err instanceof FirebaseError ? err.code : undefined;
-      const existing = code === "auth/account-exists-with-different-credential" ? await existingMethodFor(err, GOOGLE_PROVIDER) : null;
-      const shown = googleSignInNote(code, existing);
-      if (shown.action?.does === "retry") console.error("Google sign-in failed:", code ?? err);
+      const existing = code === "auth/account-exists-with-different-credential" ? await existingMethodFor(err, provider) : null;
+      const shown = signInNote(provider, code, existing);
+      if (shown.action?.does === "retry") console.error("Sign-in failed:", provider, code ?? err);
+      setNoteProvider(provider);
       setNote(
         devWithEmulators && code === "auth/network-request-failed"
           ? { ...shown, body: `Could not reach the Auth emulator at ${emulatorHost}:${EMULATOR_PORTS.auth}. Start it with pnpm dev.` }
           : shown,
       );
-      setGoogleBusy(false);
+      setProviderBusy(null);
     }
   }
 
@@ -255,11 +262,30 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
             </nav>
 
             <div className="mt-3.5">
-              <GoogleButton label={copy.google} busy={googleBusy} disabled={busy} onClick={onGoogle} />
+              <GoogleButton
+                label={copy.google}
+                busy={providerBusy === GOOGLE_PROVIDER}
+                disabled={busy || providerBusy !== null}
+                onClick={() => onProvider(GOOGLE_PROVIDER)}
+              />
+              <div className="mt-2.5">
+                <GitHubButton
+                  label={copy.github}
+                  busy={providerBusy === GITHUB_PROVIDER}
+                  disabled={busy || providerBusy !== null}
+                  onClick={() => onProvider(GITHUB_PROVIDER)}
+                />
+              </div>
               {note && (
                 <Note
                   note={note}
-                  onAction={(does) => (does === "retry" ? onGoogle() : router.replace(`/login${query}`))}
+                  onAction={(does) => {
+                    if (does === "retry") return onProvider(noteProvider);
+                    if (does === "use-google") return onProvider(GOOGLE_PROVIDER);
+                    if (does === "use-github") return onProvider(GITHUB_PROVIDER);
+                    setNote(null);
+                    router.replace(`/login${query}`);
+                  }}
                 />
               )}
               <div className="or-divider">or use your email</div>
@@ -302,7 +328,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
                 </div>
               )}
               <div className="mt-[22px]">
-                <button className="btn btn-block" type="submit" disabled={busy || googleBusy}>
+                <button className="btn btn-block" type="submit" disabled={busy || providerBusy !== null}>
                   {busy ? copy.busy : copy.submit}
                 </button>
               </div>
@@ -315,7 +341,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
                 </button>
               </div>
             )}
-            <p className="mt-4 text-center text-[13px] text-muted">We only use Google to confirm who you are. We never post anything.</p>
+            <p className="mt-4 text-center text-[13px] text-muted">We only use Google or GitHub to confirm who you are. We never post anything and never see your code.</p>
           </>
         )}
       </main>

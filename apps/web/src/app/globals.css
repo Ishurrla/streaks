@@ -844,8 +844,10 @@
     box-shadow: var(--shadow);
   }
 
-  /* Google sign-in button: Google's colours, font, logo and padding (12, 10 and 12px). */
-  .google-btn {
+  /* Google sign-in button: Google's colours, font, logo and padding (12, 10 and 12px). The
+     GitHub button (.provider-btn) shares it, so the two sit together. */
+  .google-btn,
+  .provider-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -863,14 +865,17 @@
     font-weight: 500;
     transition: transform 0.12s;
   }
-  .google-btn:active {
+  .google-btn:active,
+  .provider-btn:active {
     transform: scale(0.985);
   }
-  .google-btn:disabled {
+  .google-btn:disabled,
+  .provider-btn:disabled {
     opacity: 0.75;
     cursor: progress;
   }
-  .google-btn svg {
+  .google-btn svg,
+  .provider-btn svg {
     width: 20px;
     height: 20px;
     flex: none;
