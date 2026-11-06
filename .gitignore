@@ -13,6 +13,8 @@ ui-debug.log*
 .DS_Store
 .playwright-mcp/
 .emulator-data/
+# Emulator exports left by an interrupted shutdown (firebase emulators --export-on-exit).
+firebase-export-*/
 .vercel/
 
 # Playwright layout test output
