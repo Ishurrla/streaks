@@ -14,7 +14,7 @@ import { callUpdateTimezone } from "@/lib/data";
 import { db, realPushAvailable } from "@/lib/firebase";
 import { deviceToken, disablePushOnThisDevice, enablePushOnThisDevice, PushBlockedError, pushSupport, type PushSupport } from "@/lib/push";
 import { useProfile } from "@/lib/profile";
-import { googleSettingsError, PASSWORD_PROVIDER, reauthProvider } from "@/lib/sign-in";
+import { PASSWORD_PROVIDER, PROVIDER_NAME, reauthProvider, settingsError, type PopupProvider } from "@/lib/sign-in";
 import { applyTheme } from "@/lib/theme";
 import type { Profile, Theme } from "@/lib/types";
 
@@ -134,7 +134,7 @@ export function SettingsView() {
       <AccountSection
         email={email}
         hasPassword={providers.includes(PASSWORD_PROVIDER)}
-        googleOnly={reauthProvider(providers) !== null}
+        confirmWith={reauthProvider(providers)}
         onReset={async () => {
           if (!email) return;
           try {
@@ -268,14 +268,15 @@ function TimezoneSection({ timezone }: { timezone: string }) {
 function AccountSection({
   email,
   hasPassword,
-  googleOnly,
+  confirmWith,
   onReset,
   onLogOut,
   onDelete,
 }: {
   email: string | null;
   hasPassword: boolean;
-  googleOnly: boolean;
+  /** For an account without a password: the window that confirms it is them. */
+  confirmWith: PopupProvider | null;
   onReset: () => void;
   onLogOut: () => void;
   onDelete: (password: string | null) => Promise<void>;
@@ -289,16 +290,16 @@ function AccountSection({
 
   async function confirmDelete(e: FormEvent) {
     e.preventDefault();
-    if (!googleOnly && !password) return setError("Enter your password to confirm.");
+    if (!confirmWith && !password) return setError("Enter your password to confirm.");
     setBusy(true);
     setError(null);
     try {
-      await onDelete(googleOnly ? null : password);
+      await onDelete(confirmWith ? null : password);
     } catch (err) {
       setBusy(false);
       setFailures((n) => n + 1);
       const code = err instanceof FirebaseError ? err.code : "";
-      if (googleOnly && code) return setError(googleSettingsError(code));
+      if (confirmWith && code) return setError(settingsError(confirmWith, code));
       setError(
         code === "auth/invalid-credential" || code === "auth/wrong-password"
           ? "That password is not right."
@@ -325,8 +326,8 @@ function AccountSection({
             <p className="mt-2 font-medium" role="alert">
               Delete your account and every habit and check-in? This cannot be undone.
             </p>
-            {googleOnly ? (
-              <p className="mt-2 text-sm text-muted">Google will ask you to confirm it is you.</p>
+            {confirmWith ? (
+              <p className="mt-2 text-sm text-muted">{PROVIDER_NAME[confirmWith]} will ask you to confirm it is you.</p>
             ) : (
               <>
                 <label className="field-label" htmlFor="delete-password">

@@ -4,21 +4,28 @@ import { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { useState, type FormEvent } from "react";
 import { PasswordInput } from "@/components/password-input";
+import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { useAuth } from "@/lib/auth";
 import { authErrorFromCode } from "@/lib/validation";
 import {
   canDisconnect,
+  GITHUB_PROVIDER,
   GOOGLE_PROVIDER,
-  googleSettingsError,
+  isOnlyWayIn,
   PASSWORD_PROVIDER,
+  PROVIDER_NAME,
   reauthProvider,
+  remainingMethods,
+  settingsError,
   validateNewPassword,
+  type PopupProvider,
 } from "@/lib/sign-in";
 
 const codeOf = (err: unknown) => (err instanceof FirebaseError ? err.code : undefined);
 
 const CONNECTED_PILL = "flex-none rounded-full bg-done-soft px-3 py-1.5 text-[13px] font-bold";
+const ONLY_WAY_IN = "Your only way in. Add another method first.";
 
 export function SignInMethodsSection({
   user,
@@ -33,10 +40,10 @@ export function SignInMethodsSection({
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmGitHub, setConfirmGitHub] = useState(false);
 
   const hasPassword = providers.includes(PASSWORD_PROVIDER);
-  const hasGoogle = providers.includes(GOOGLE_PROVIDER);
-  const googleEmail = user.providerData.find((p) => p.providerId === GOOGLE_PROVIDER)?.email ?? user.email;
+  const confirmWith = reauthProvider(providers);
 
   async function run(action: () => Promise<void>, done: string, unexpected: (code: string | undefined) => string | null) {
     setBusy(true);
@@ -52,11 +59,44 @@ export function SignInMethodsSection({
     }
   }
 
-  const note = !hasGoogle
-    ? "Connect Google to sign in with one tap next time."
-    : hasPassword
-      ? "You can sign in with either method. Disconnecting is allowed because your password still works."
-      : "You signed up with Google and have no password. Disconnect is switched off so you cannot lock yourself out. Add a password first.";
+  /** A Google or GitHub row: its email from providerData, and Connect or Disconnect. */
+  function providerRow(provider: PopupProvider, onDisconnect: () => void) {
+    const name = PROVIDER_NAME[provider];
+    const connected = providers.includes(provider);
+    const email = user.providerData.find((p) => p.providerId === provider)?.email;
+    const only = isOnlyWayIn(providers, provider);
+    return (
+      <div className="method">
+        <div className="method-meta">
+          <div className="method-title">{name}</div>
+          <div className="method-detail">{connected ? (email ?? "Connected") : "Not connected"}</div>
+          {only && <div className="method-detail">{ONLY_WAY_IN}</div>}
+        </div>
+        {connected && <span className={CONNECTED_PILL}>Connected</span>}
+        {connected ? (
+          <button
+            className="btn btn-ghost btn-small"
+            type="button"
+            aria-label={`Disconnect ${name}`}
+            disabled={busy || !canDisconnect(providers, provider)}
+            onClick={onDisconnect}
+          >
+            Disconnect
+          </button>
+        ) : (
+          <button
+            className="btn btn-ghost btn-small"
+            type="button"
+            aria-label={`Connect ${name}`}
+            disabled={busy}
+            onClick={() => run(() => connect(provider), `${name} connected.`, (code) => settingsError(provider, code))}
+          >
+            Connect
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className="panel mb-3.5" aria-labelledby="sec-sign-in-methods">
@@ -68,51 +108,54 @@ export function SignInMethodsSection({
       <div className="method">
         <div className="method-meta">
           <div className="method-title">Email and password</div>
-          <div className="method-detail">{hasPassword ? user.email : "Not connected"}</div>
+          <div className="method-detail">{hasPassword ? user.email : "Not set"}</div>
+          {isOnlyWayIn(providers, PASSWORD_PROVIDER) && <div className="method-detail">{ONLY_WAY_IN}</div>}
         </div>
         {hasPassword && <span className={CONNECTED_PILL}>Connected</span>}
       </div>
 
-      <div className="method">
-        <div className="method-meta">
-          <div className="method-title">Google</div>
-          <div className="method-detail">{hasGoogle ? googleEmail : "Not connected"}</div>
-        </div>
-        {hasGoogle && <span className={CONNECTED_PILL}>Connected</span>}
-        {hasGoogle ? (
-          <button
-            className="btn btn-ghost btn-small"
-            type="button"
-            disabled={busy || !canDisconnect(providers, GOOGLE_PROVIDER)}
-            onClick={() => run(() => disconnect(GOOGLE_PROVIDER), "Google disconnected.", () => "Could not disconnect Google. Try again.")}
-          >
-            Disconnect
-          </button>
-        ) : (
-          <button
-            className="btn btn-ghost btn-small"
-            type="button"
-            disabled={busy}
-            onClick={() => run(() => connect(GOOGLE_PROVIDER), "Google connected.", googleSettingsError)}
-          >
-            Connect
-          </button>
-        )}
-      </div>
+      {providerRow(GOOGLE_PROVIDER, () =>
+        run(() => disconnect(GOOGLE_PROVIDER), "Google disconnected.", () => "Could not disconnect Google. Try again."),
+      )}
+      {providerRow(GITHUB_PROVIDER, () => setConfirmGitHub(true))}
 
-      <div className="note note-info mt-2.5!">{note}</div>
+      <div className="note note-info mt-2.5!">
+        {providers.length > 1 ? "You can sign in with any connected method." : "Connect another method so you are never locked out."}
+      </div>
       {error && (
         <div className="note note-error" role="alert">
           {error}
         </div>
       )}
 
-      {reauthProvider(providers) === GOOGLE_PROVIDER && <SetPasswordForm onChanged={onChanged} />}
+      {confirmWith && <SetPasswordForm provider={confirmWith} onChanged={onChanged} />}
+
+      <Sheet open={confirmGitHub} onClose={() => setConfirmGitHub(false)} labelledBy="disconnect-github-title">
+        <h2 id="disconnect-github-title" className="mb-1.5!">
+          Disconnect GitHub?
+        </h2>
+        <p className="text-muted">You will still be able to sign in with {remainingMethods(providers, GITHUB_PROVIDER)}.</p>
+        <div className="mt-[22px] flex gap-2.5">
+          <button className="btn btn-ghost flex-1" type="button" onClick={() => setConfirmGitHub(false)} autoFocus>
+            Keep it
+          </button>
+          <button
+            className="btn btn-danger flex-1"
+            type="button"
+            onClick={() => {
+              setConfirmGitHub(false);
+              run(() => disconnect(GITHUB_PROVIDER), "GitHub disconnected.", () => "Could not disconnect GitHub. Try again.");
+            }}
+          >
+            Disconnect
+          </button>
+        </div>
+      </Sheet>
     </section>
   );
 }
 
-function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
+function SetPasswordForm({ provider, onChanged }: { provider: PopupProvider; onChanged: () => void }) {
   const { setPassword } = useAuth();
   const toast = useToast();
   const [password, setValue] = useState("");
@@ -138,7 +181,7 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
       setErrors(
         code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements"
           ? { password: authErrorFromCode(code).password }
-          : { form: googleSettingsError(code) },
+          : { form: settingsError(provider, code) },
       );
       setFailures((n) => n + 1);
       setBusy(false);
@@ -148,7 +191,7 @@ function SetPasswordForm({ onChanged }: { onChanged: () => void }) {
   return (
     <form className="mt-3 border-t border-line pt-3" onSubmit={submit} noValidate>
       <div className="method-title">Set a password</div>
-      <p className="text-sm text-muted">Google will ask you to confirm it is you first.</p>
+      <p className="text-sm text-muted">{PROVIDER_NAME[provider]} will ask you to confirm it is you first.</p>
       <label className="field-label" htmlFor="new-password">
         New password
       </label>
