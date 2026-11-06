@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkEmulators } from "./emulators";
+import { checkEmulators, emulatorPorts, usesEmulators } from "./emulators";
 
 const PORTS = { auth: 9099, firestore: 8080 };
 
@@ -23,5 +23,29 @@ describe("checkEmulators", () => {
       { emulator: "Firestore", port: 8080 },
     ]);
     expect(await checkEmulators("127.0.0.1", PORTS, fakeFetch([9099]))).toEqual([{ emulator: "Firestore", port: 8080 }]);
+  });
+});
+
+describe("emulatorPorts", () => {
+  it("uses firebase.json's ports by default", () => {
+    expect(emulatorPorts({})).toEqual({ auth: 9099, firestore: 8080 });
+  });
+
+  it("takes the test emulator ports from the variables", () => {
+    expect(emulatorPorts({ auth: "9199", firestore: "8180" })).toEqual({ auth: 9199, firestore: 8180 });
+  });
+
+  it("ignores values that are not a port", () => {
+    expect(emulatorPorts({ auth: "abc", firestore: "70000" })).toEqual({ auth: 9099, firestore: 8080 });
+    expect(emulatorPorts({ auth: "", firestore: "-1" })).toEqual({ auth: 9099, firestore: 8080 });
+  });
+});
+
+describe("usesEmulators", () => {
+  it("is on with the flag or with no real config, and only then", () => {
+    expect(usesEmulators({ flag: "true", apiKey: "real-key" })).toBe(true);
+    expect(usesEmulators({ apiKey: undefined })).toBe(true);
+    expect(usesEmulators({ flag: "false", apiKey: "real-key" })).toBe(false);
+    expect(usesEmulators({ apiKey: "real-key" })).toBe(false);
   });
 });

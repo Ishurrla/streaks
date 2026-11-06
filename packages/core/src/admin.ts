@@ -46,9 +46,10 @@ function createApp(): App {
           "and do not set NEXT_PUBLIC_FIREBASE_USE_EMULATORS or any *_EMULATOR_HOST.",
       );
     }
+    // Where the emulators are; the same variables as the browser. Only read past the check above.
     const host = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
-    process.env.FIRESTORE_EMULATOR_HOST ??= `${host}:8080`;
-    process.env.FIREBASE_AUTH_EMULATOR_HOST ??= `${host}:9099`;
+    process.env.FIRESTORE_EMULATOR_HOST ??= `${host}:${process.env.NEXT_PUBLIC_EMULATOR_FIRESTORE_PORT || 8080}`;
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ??= `${host}:${process.env.NEXT_PUBLIC_EMULATOR_AUTH_PORT || 9099}`;
     return initializeApp({ projectId: emulatorProjectId() });
   }
 

@@ -3,6 +3,7 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { emulatorPorts, usesEmulators } from "./emulators";
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -28,15 +29,18 @@ export const realPushAvailable = !!(apiKey && webConfig.messagingSenderId && web
  * With no real Firebase config (local development) the app talks to the Emulator Suite
  * under the demo-streaks project, which cannot reach any live resources.
  */
-export const usingEmulators = process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS === "true" || !apiKey;
+export const usingEmulators = usesEmulators({ flag: process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATORS, apiKey });
 
 /** Development against the emulators: the app checks they are up and explains when they are not. */
 export const devWithEmulators = process.env.NODE_ENV === "development" && usingEmulators;
 
 export const emulatorHost = process.env.NEXT_PUBLIC_EMULATOR_HOST ?? "127.0.0.1";
 
-// Must match the ports in firebase.json.
-export const EMULATOR_PORTS = { auth: 9099, firestore: 8080 } as const;
+// firebase.json's ports unless overridden; only used when usingEmulators is true.
+export const EMULATOR_PORTS = emulatorPorts({
+  auth: process.env.NEXT_PUBLIC_EMULATOR_AUTH_PORT,
+  firestore: process.env.NEXT_PUBLIC_EMULATOR_FIRESTORE_PORT,
+});
 
 // On the emulators the app always uses the demo-streaks project, even when real config is
 // set: the emulators run as demo-streaks (ID tokens are checked against the project ID), and a demo
