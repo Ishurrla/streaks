@@ -55,11 +55,11 @@ let shieldTimer: ReturnType<typeof setTimeout> | undefined;
 function shieldClicks() {
   const html = document.documentElement;
   window.addEventListener("click", swallow, true);
-  html.setAttribute("data-click-shield", "");
+  html.dataset.clickShield = ""
   clearTimeout(shieldTimer);
   shieldTimer = setTimeout(() => {
     window.removeEventListener("click", swallow, true);
-    html.removeAttribute("data-click-shield");
+    delete html.dataset.clickShield;
   }, CLICK_SHIELD_MS);
 }
 
@@ -85,6 +85,11 @@ export function Sheet({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // The latest onClose, for the backdrop listener below, which lives as long as the sheet is open.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   // No <body> to render into on the server.
   const inBrowser = useSyncExternalStore(
     subscribeNothing,
@@ -97,8 +102,15 @@ export function Sheet({
     if (!open || !dialog) return;
     if (!dialog.open) dialog.showModal();
     const unlock = lockPage(dialog);
+    // A click on the dialog element itself (not its content) is a click on the backdrop.
+    // Escape is the keyboard way to the same thing (onCancel below).
+    const onBackdrop = (e: MouseEvent) => {
+      if (e.target === dialog) onCloseRef.current();
+    };
+    dialog.addEventListener("click", onBackdrop);
     // Also runs when Next hides this page (it keeps it mounted), so nothing stays locked.
     return () => {
+      dialog.removeEventListener("click", onBackdrop);
       unlock();
       if (dialog.open) dialog.close();
       shieldClicks();
@@ -107,19 +119,15 @@ export function Sheet({
 
   if (!inBrowser) return null;
   return createPortal(
+    // <dialog> is a dialog to assistive technology already; no role attribute needed.
     <dialog
       ref={ref}
-      role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
       className={`sheet ${className}`}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
-      }}
-      // A click on the dialog element itself (not its content) is a click on the backdrop.
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
       }}
     >
       {open && <div className="sheet-body">{children}</div>}

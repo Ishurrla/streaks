@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { AuthNote } from "@/lib/sign-in";
 
 const WELCOME_MS = 2200; // How long the bar in .welcome-bar takes to fill.
@@ -61,7 +61,8 @@ function ProviderButton({
       {logo}
       {busy ? (
         <>
-          Signing you in…
+          {/* No space needed: the button's flex gap separates the text and the spinner. */}
+          {"Signing you in…"}
           <span className="spinner" aria-hidden="true" />
         </>
       ) : (
@@ -82,24 +83,43 @@ export function GitHubButton(props: ButtonProps) {
 }
 
 export function Note({ note, onAction }: { note: AuthNote; onAction?: (does: NonNullable<AuthNote["action"]>["does"]) => void }) {
-  return (
-    <div className={`note note-${note.kind}`} role={note.kind === "error" ? "alert" : "status"}>
+  // Phrasing content only (a <span>, not a <div>), so it is valid inside <output> too.
+  const content = (
+    <>
       <b>{note.title}</b>
       {note.body}
       {note.action && (
-        <div>
+        <span className="block">
           <button className="note-action" type="button" onClick={() => onAction?.(note.action!.does)}>
             {note.action.label}
           </button>
-        </div>
+        </span>
       )}
+    </>
+  );
+  // Errors interrupt (role="alert", which has no HTML element); anything else is announced
+  // politely by <output>, the native element for role="status".
+  return note.kind === "error" ? (
+    <div className="note note-error" role="alert">
+      {content}
     </div>
+  ) : (
+    <output className={`note note-${note.kind} block`}>{content}</output>
   );
 }
 
-/** The tick after signing in with Google or GitHub. Moves on by itself, sooner if motion is reduced. */
+/**
+ * The tick after signing in with Google or GitHub. Moves on by itself, sooner if motion is
+ * reduced. It replaces the form, taking away the button that had focus, so focus moves to its
+ * heading: screen readers then read "Welcome, …", and keyboard focus is not lost.
+ */
 export function WelcomeTick({ isNew, name, to }: { isNew: boolean; name: string; to: string }) {
   const router = useRouter();
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -108,13 +128,14 @@ export function WelcomeTick({ isNew, name, to }: { isNew: boolean; name: string;
   }, [router, to]);
 
   return (
-    <div className="welcome mt-7" role="status">
+    <div className="welcome mt-7">
       <div className="welcome-ring">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path pathLength={1} d="M5 12.5l4.5 4.5L19 7.5" />
         </svg>
       </div>
-      <h1 className="mb-1.5 text-[26px] font-extrabold">{isNew ? `Welcome, ${name}` : `Welcome back, ${name}`}</h1>
+      {/* Focusable from code only (tabIndex -1), so no focus ring and not in the Tab order. */}
+      <h1 ref={heading} tabIndex={-1} className="mb-1.5 text-[26px] font-extrabold outline-none">{isNew ? `Welcome, ${name}` : `Welcome back, ${name}`}</h1>
       <p className="text-muted">{isNew ? "Your account is ready. Taking you to set up your first habit." : "Taking you to Today."}</p>
       <div className="welcome-bar" aria-hidden="true">
         <i />

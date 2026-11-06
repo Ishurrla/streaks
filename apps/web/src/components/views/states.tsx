@@ -1,12 +1,16 @@
 // Shared loading and error states for the app screens.
 
+/**
+ * Pulsing placeholder cards. <output> is the native role="status", announced as "Loading";
+ * it holds inline content only, so the cards are block spans.
+ */
 export function LoadingCards({ count = 3 }: { count?: number }) {
   return (
-    <div className="flex flex-col gap-2.5" role="status" aria-label="Loading">
+    <output className="flex flex-col gap-2.5" aria-label="Loading">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="h-[78px] animate-pulse rounded-[18px] bg-surface shadow-card" />
+        <span key={i} className="block h-19.5 animate-pulse rounded-[18px] bg-surface shadow-card" />
       ))}
-    </div>
+    </output>
   );
 }
 

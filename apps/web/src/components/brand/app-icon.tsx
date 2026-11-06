@@ -14,7 +14,8 @@ export function appIcon(size: number): ImageResponse {
           background: "#13795B",
         }}
       >
-        <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24">
+        {/* Drawn into the PNG by next/og and never part of a page, so it is decorative here. */}
+        <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M12 1.5c.9 3.6 5.2 5.9 5.2 11a5.2 5.2 0 0 1-10.4 0c0-2.2 1-3.6 2.1-4.7.3 1.4 1 2.2 1.8 2.5C10.2 7.5 10.6 4.2 12 1.5z"
             fill="#F2780C"

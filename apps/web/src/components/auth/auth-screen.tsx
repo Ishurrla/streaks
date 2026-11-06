@@ -3,7 +3,7 @@
 import { FirebaseError } from "firebase/app";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type SubmitEvent } from "react";
 import { GitHubButton, GoogleButton, Note, WelcomeTick } from "@/components/auth/google-sign-in";
 import { Flame } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
@@ -143,7 +143,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
     if (first) formRef.current?.querySelector<HTMLInputElement>(`#${first}`)?.focus();
   }
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     const errs = validateAuth(mode, fields);
     setErrors(errs);
@@ -224,7 +224,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
         </div>
         <div>
           <div className="flex items-center gap-3 font-display text-[150px] leading-[.9] font-extrabold" aria-hidden="true">
-            <Flame live className="size-[110px]!" />
+            <Flame live className="size-27.5!" />
             47
           </div>
           <p className="max-w-[24ch] text-xl opacity-90">The streak is just proof you showed up.</p>
@@ -232,7 +232,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
         <div />
       </div>
 
-      <main className="flex flex-1 flex-col px-[22px] pt-9 pb-7 desk:justify-center desk:p-14 [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-[400px]">
+      <main className="flex flex-1 flex-col px-5.5 pt-9 pb-7 desk:justify-center desk:p-14 *:mx-auto *:w-full *:max-w-100">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-display text-xl font-extrabold">
             <Flame live />
@@ -327,7 +327,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
                   {errors.form}
                 </div>
               )}
-              <div className="mt-[22px]">
+              <div className="mt-5.5">
                 <button className="btn btn-block" type="submit" disabled={busy || providerBusy !== null}>
                   {busy ? copy.busy : copy.submit}
                 </button>

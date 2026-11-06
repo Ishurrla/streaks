@@ -32,12 +32,13 @@ export function MilestoneCelebration({ hit, today, onClose }: { hit: MilestoneHi
             <Flame live />
           </div>
           <h2 id="milestone-title">{MILESTONE_NAMES[n]}!</h2>
-          <p className="text-muted [overflow-wrap:anywhere]">
+          <p className="text-muted wrap-anywhere">
             {hit.habit.name}: {n} {unit}.{" "}
             {next ? `Next stop: ${MILESTONE_NAMES[next]} at ${next}.` : "That is every milestone."}
           </p>
-          <div className="mt-[22px] flex flex-col gap-2.5">
-            <button className="btn btn-block" type="button" onClick={onClose} autoFocus>
+          <div className="mt-5.5 flex flex-col gap-2.5">
+            {/* The dialog focuses its first button on opening, so no autoFocus. */}
+            <button className="btn btn-block" type="button" onClick={onClose}>
               Keep going
             </button>
             <button

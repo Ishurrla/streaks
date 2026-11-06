@@ -48,7 +48,8 @@ async function checkEverythingOff(page: Page) {
 }
 
 async function expectModal(page: Page, dialog: ReturnType<Page["locator"]>) {
-  await expect(dialog).toHaveAttribute("role", "dialog");
+  // A dialog to assistive technology (the <dialog> element's own role), modal, and named.
+  await expect(dialog).toHaveRole("dialog");
   await expect(dialog).toHaveAttribute("aria-modal", "true");
   await expect(dialog).toHaveAccessibleName(/.+/);
   // The rest of the app is inert, and focus is inside the dialog.
@@ -83,6 +84,8 @@ test("the all-done celebration and the habit sheet block the page behind them", 
 
   // 1. Celebration: modal, inert page, no Tab to cards, no scrolling behind it.
   let dialog = await checkEverythingOff(page);
+  // The dialog focuses its first button on opening.
+  await expect(dialog.getByRole("button", { name: "Nice" })).toBeFocused();
   const done = await states(page);
   expect(done).toEqual(["true", "true"]);
   await expectModal(page, dialog);

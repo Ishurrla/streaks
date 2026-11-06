@@ -40,7 +40,9 @@ export function useLocalToday(timezone: string): string {
 
 export function greeting(timezone: string, now = new Date()): string {
   const { hour } = parts(now, timezone);
-  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 const utc = (date: string) => new Date(`${date}T00:00:00Z`);

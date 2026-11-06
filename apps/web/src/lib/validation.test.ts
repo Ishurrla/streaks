@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authErrorFromCode, safeNext, validateAuth } from "./validation";
+import { authErrorFromCode, isEmail, safeNext, validateAuth } from "./validation";
 
 describe("validateAuth", () => {
   it("returns the prototype's messages", () => {
@@ -30,5 +30,32 @@ describe("safeNext", () => {
     expect(safeNext("//evil.example")).toBe("/today");
     expect(safeNext("/\\evil.example")).toBe("/today");
     expect(safeNext(null)).toBe("/today");
+  });
+});
+
+describe("isEmail", () => {
+  it("accepts something@something.something, around spaces", () => {
+    for (const v of ["a@b.c", "name@example.com", " ada@example.com ", "first.last@mail.example.co.uk"]) {
+      expect(isEmail(v), v).toBe(true);
+    }
+  });
+
+  it("refuses anything missing a part, or with a space inside", () => {
+    for (const v of ["", "a", "a@b", "@b.c", "a@.c", "a@b.", "a.b@c", "a b@c.d", "a@b .c", "a@b.	c"]) {
+      expect(isEmail(v), JSON.stringify(v)).toBe(false);
+    }
+  });
+
+  it("keeps the old pattern's leniency: extra @ and dots are fine where it allowed them", () => {
+    // The same answers as /^\S+@\S+\.\S+$/, which the check replaced.
+    for (const v of ["a@b@c.d", "@@a.a", "a@@b.c", "a@a..", "a@b.c.d"]) {
+      expect(isEmail(v), v).toBe(true);
+    }
+  });
+
+  it("stays fast on very long input", () => {
+    const start = performance.now();
+    expect(isEmail(`a@${"a".repeat(100_000)}@`)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(50);
   });
 });

@@ -19,11 +19,19 @@ function EmulatorCheck() {
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
-    const run = async () => {
-      const found = await checkEmulators(emulatorHost, EMULATOR_PORTS);
-      if (cancelled) return;
-      setProblems(found);
-      timer = setTimeout(run, found.length ? 3000 : 15000);
+    const run = () => {
+      checkEmulators(emulatorHost, EMULATOR_PORTS).then(
+        (found) => {
+          if (cancelled) return;
+          setProblems(found);
+          timer = setTimeout(run, found.length ? 3000 : 15000);
+        },
+        // checkEmulators reports an emulator it cannot reach as a problem rather than
+        // throwing. Should it throw anyway, keep the last result and keep checking.
+        () => {
+          if (!cancelled) timer = setTimeout(run, 15000);
+        },
+      );
     };
     run();
     return () => {

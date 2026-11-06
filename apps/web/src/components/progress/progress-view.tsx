@@ -38,45 +38,66 @@ export function ProgressView() {
     chips.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [habit?.id]);
 
+  const head = <PageHead title="Progress" />;
+  // Why there is nothing to show yet, if so: an error, still loading, or no habits.
+  if (habits.error) {
+    return (
+      <>
+        {head}
+        <ErrorCard message="We could not load your habits." onRetry={habits.retry} />
+      </>
+    );
+  }
+  if (!habits.data) {
+    return (
+      <>
+        {head}
+        <LoadingCards count={2} />
+      </>
+    );
+  }
+  if (!habit) {
+    return (
+      <>
+        {head}
+        <EmptyRow title="Nothing to show yet" body="Add a habit and check it off to see your calendar." />
+      </>
+    );
+  }
+
   return (
     <>
-      <PageHead title="Progress" />
-      {habits.error ? (
-        <ErrorCard message="We could not load your habits." onRetry={habits.retry} />
-      ) : !habits.data ? (
-        <LoadingCards count={2} />
-      ) : !habit ? (
-        <EmptyRow title="Nothing to show yet" body="Add a habit and check it off to see your calendar." />
-      ) : (
-        <>
-          <div ref={chips} className="mb-3.5 flex gap-2 overflow-x-auto pb-1.5" role="group" aria-label="Choose a habit">
-            {list.map((h) => {
-              const on = h.id === habit.id;
-              return (
-                <button
-                  key={h.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setPicked(h.id)}
-                  style={{ "--hc": h.color } as React.CSSProperties}
-                  className={`min-h-11 flex-none rounded-full border-[1.5px] px-3.5 py-2 text-sm ${
-                    on ? "border-(--hc) bg-(--hc) font-bold text-white" : "border-line bg-surface font-medium"
-                  }`}
-                >
-                  {h.name}
-                </button>
-              );
-            })}
-          </div>
-          <HabitProgress
-            key={habit.id}
-            uid={profile.uid}
-            habit={habit}
-            timezone={profile.timezone}
-            freshBadge={linked.habit === habit.id ? linked.badge : null}
-          />
-        </>
-      )}
+      {head}
+      {/* A fieldset named "Choose a habit" (read out, not shown); the row inside scrolls sideways. */}
+      <fieldset className="mb-3.5 min-w-0">
+        <legend className="sr-only">Choose a habit</legend>
+        <div ref={chips} className="flex gap-2 overflow-x-auto pb-1.5">
+          {list.map((h) => {
+            const on = h.id === habit.id;
+            return (
+              <button
+                key={h.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setPicked(h.id)}
+                style={{ "--hc": h.color } as React.CSSProperties}
+                className={`min-h-11 flex-none rounded-full border-[1.5px] px-3.5 py-2 text-sm ${
+                  on ? "border-(--hc) bg-(--hc) font-bold text-white" : "border-line bg-surface font-medium"
+                }`}
+              >
+                {h.name}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      <HabitProgress
+        key={habit.id}
+        uid={profile.uid}
+        habit={habit}
+        timezone={profile.timezone}
+        freshBadge={linked.habit === habit.id ? linked.badge : null}
+      />
     </>
   );
 }
@@ -97,7 +118,7 @@ function HabitProgress({
 
   return (
     <div className="grid gap-3.5">
-      <div className="grid grid-cols-2 gap-2.5 desk:max-w-[560px]">
+      <div className="grid grid-cols-2 gap-2.5 desk:max-w-140">
         <Tile label="Current streak" icon={<Flame className="size-4!" />} value={habit.currentStreak} unit={unit} />
         <Tile label="Best streak" icon={<StarIcon className="size-4 text-flame" />} value={habit.bestStreak} unit={unit} />
       </div>
@@ -134,14 +155,10 @@ function Milestones({ habit, freshBadge }: { habit: Habit; freshBadge: number | 
               </div>
             </div>
           </div>
-          <div
-            className="milestone-bar"
-            role="progressbar"
-            aria-valuenow={streak}
-            aria-valuemin={base}
-            aria-valuemax={next}
-            aria-label={`Progress to ${MILESTONE_NAMES[next]}`}
-          >
+          {/* The native bar is for screen readers; the drawn one (with its small nub at zero
+              and its animated fill) is decoration, so it is not read twice. */}
+          <progress className="sr-only" value={streak - base} max={next - base} aria-label={`Progress to ${MILESTONE_NAMES[next]}`} />
+          <div className="milestone-bar" aria-hidden="true">
             <i style={{ width: `${Math.max(4, Math.round(((streak - base) / (next - base)) * 100))}%` }} />
           </div>
         </>
@@ -274,22 +291,23 @@ function FiveWeeks({ uid, habit, today, timezone }: { uid: string; habit: Habit;
         </div>
       )}
 
+      {/* Each item is a flex row whose gap separates the dot from its label, so no space. */}
       <div className="cal-legend" aria-hidden="true">
         <span>
           <i className="cal-day done" />
-          Done
+          {"Done"}
         </span>
         <span>
           <i className="cal-day miss" />
-          Missed
+          {"Missed"}
         </span>
         <span>
           <i className="cal-day rest" />
-          Rest day
+          {"Rest day"}
         </span>
         <span>
           <i className="cal-day frozen" />
-          Freeze used
+          {"Freeze used"}
         </span>
       </div>
 
@@ -301,6 +319,12 @@ function FiveWeeks({ uid, habit, today, timezone }: { uid: string; habit: Habit;
   );
 }
 
+/** "day" or "days" for an every-day habit; "in a row" for one with rest days. */
+function unitLabel(unit: "days" | "in a row", value: number): string {
+  if (unit === "in a row") return "in a row";
+  return value === 1 ? "day" : "days";
+}
+
 function Tile({ label, icon, value, unit }: { label: string; icon: React.ReactNode; value: number; unit: "days" | "in a row" }) {
   return (
     <div className="rounded-[18px] bg-surface px-4 py-3.5 shadow-card">
@@ -309,7 +333,7 @@ function Tile({ label, icon, value, unit }: { label: string; icon: React.ReactNo
         {label}
       </span>
       <b className="font-display text-[38px] leading-[1.1] font-extrabold tabular-nums">{value}</b>
-      <small className="ml-1 text-sm text-muted">{unit === "days" ? (value === 1 ? "day" : "days") : "in a row"}</small>
+      <small className="ml-1 text-sm text-muted">{unitLabel(unit, value)}</small>
     </div>
   );
 }

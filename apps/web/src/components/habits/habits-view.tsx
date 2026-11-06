@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PageHead } from "@/components/views/page-head";
 import { EmptyRow, ErrorCard, LoadingCards } from "@/components/views/states";
 import { useAuth } from "@/lib/auth";
-import { useHabits } from "@/lib/data";
+import { useHabits, type Habit } from "@/lib/data";
 import { useLocalToday } from "@/lib/dates";
 import { useProfile } from "@/lib/profile";
 import { HabitSheet, PendingDays, type SheetState } from "./habit-sheet";
@@ -26,40 +26,7 @@ export function HabitsView() {
         </button>
       </PageHead>
 
-      {habits.error ? (
-        <ErrorCard message="We could not load your habits." onRetry={habits.retry} />
-      ) : !habits.data ? (
-        <LoadingCards />
-      ) : habits.data.length === 0 ? (
-        <EmptyRow title="No habits yet" body="Add one small thing you can do every day." />
-      ) : (
-        <ul className="flex flex-col gap-2.5">
-          {habits.data.map((h) => (
-            <li
-              key={h.id}
-              className="flex items-center gap-3.5 rounded-[18px] bg-surface px-4 py-3.5 shadow-card"
-              style={{ "--hc": h.color } as React.CSSProperties}
-            >
-              <span className="size-3.5 flex-none rounded-full bg-(--hc)" aria-hidden="true" />
-              <div className="min-w-0 flex-1">
-                <div className="font-bold [overflow-wrap:anywhere]">{h.name}</div>
-                <div className="text-sm text-muted tabular-nums">
-                  Current {h.currentStreak} · Best {h.bestStreak} · {describeDays(daysOn(h, today))}
-                </div>
-                <PendingDays habit={h} today={today} />
-              </div>
-              <button
-                className="link"
-                type="button"
-                aria-label={`Edit ${h.name}`}
-                onClick={() => setSheet({ mode: "edit", habit: h })}
-              >
-                Edit
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <HabitList habits={habits} today={today} onEdit={(habit) => setSheet({ mode: "edit", habit })} />
 
       <div className="mt-7 flex flex-col items-stretch gap-3">
         <button className="btn btn-ghost btn-block" type="button" onClick={() => logOut()}>
@@ -75,5 +42,44 @@ export function HabitsView() {
         onClose={() => setSheet(null)}
       />
     </>
+  );
+}
+
+/** The habits, or why there are none to show: an error, still loading, or none added yet. */
+function HabitList({
+  habits,
+  today,
+  onEdit,
+}: {
+  habits: ReturnType<typeof useHabits>;
+  today: string;
+  onEdit: (habit: Habit) => void;
+}) {
+  if (habits.error) return <ErrorCard message="We could not load your habits." onRetry={habits.retry} />;
+  if (!habits.data) return <LoadingCards />;
+  if (habits.data.length === 0) return <EmptyRow title="No habits yet" body="Add one small thing you can do every day." />;
+
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {habits.data.map((h) => (
+        <li
+          key={h.id}
+          className="flex items-center gap-3.5 rounded-[18px] bg-surface px-4 py-3.5 shadow-card"
+          style={{ "--hc": h.color } as React.CSSProperties}
+        >
+          <span className="size-3.5 flex-none rounded-full bg-(--hc)" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold wrap-anywhere">{h.name}</div>
+            <div className="text-sm text-muted tabular-nums">
+              Current {h.currentStreak} · Best {h.bestStreak} · {describeDays(daysOn(h, today))}
+            </div>
+            <PendingDays habit={h} today={today} />
+          </div>
+          <button className="link" type="button" aria-label={`Edit ${h.name}`} onClick={() => onEdit(h)}>
+            Edit
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

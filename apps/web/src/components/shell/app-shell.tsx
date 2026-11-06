@@ -25,16 +25,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="desk:flex desk:min-h-dvh">
       <PushListener />
       <main className="min-w-0 flex-1 px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] desk:px-10 desk:pt-9 desk:pb-12">
-        <div className={`mx-auto max-w-[560px] ${narrow ? "desk:max-w-[720px]" : "desk:max-w-[1040px]"}`}>
+        <div className={`mx-auto max-w-140 ${narrow ? "desk:max-w-180" : "desk:max-w-260"}`}>
           {children}
         </div>
       </main>
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] desk:sticky desk:top-0 desk:order-first desk:h-dvh desk:w-[232px] desk:flex-none desk:flex-col desk:gap-1 desk:border-t-0 desk:border-r desk:px-3.5 desk:py-[22px]"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] desk:sticky desk:top-0 desk:order-first desk:h-dvh desk:w-58 desk:flex-none desk:flex-col desk:gap-1 desk:border-t-0 desk:border-r desk:px-3.5 desk:py-5.5"
       >
-        <div className="hidden items-center gap-2 px-2.5 pb-[22px] font-display text-[22px] font-extrabold desk:flex">
+        <div className="hidden items-center gap-2 px-2.5 pb-5.5 font-display text-[22px] font-extrabold desk:flex">
           <Flame live />
           Streaks
         </div>

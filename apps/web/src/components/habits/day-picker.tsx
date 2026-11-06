@@ -38,11 +38,13 @@ export function DayPicker({
   const toggle = (d: number) => onChange(days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b));
 
   return (
-    <div style={{ "--hc": color } as React.CSSProperties}>
-      <div className="field-label" id="repeat-label">
-        Repeat
-      </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Quick choices">
+    // A fieldset, so "Repeat" names the quick choices and the day pills together, and each
+    // button names itself ("Weekdays", "Monday"), so no inner groups are needed. min-w-0
+    // undoes a fieldset's min-content width, which would stop the pills shrinking on phones;
+    // mt-3 stands in for the legend's top margin, which a fieldset ignores.
+    <fieldset className="mt-3 min-w-0" style={{ "--hc": color } as React.CSSProperties}>
+      <legend className="field-label">Repeat</legend>
+      <div className="flex flex-wrap gap-2">
         {PRESETS.map(([label, preset]) => (
           <button
             key={label}
@@ -55,7 +57,7 @@ export function DayPicker({
           </button>
         ))}
       </div>
-      <div className="day-pills" role="group" aria-labelledby="repeat-label">
+      <div className="day-pills">
         {DAY_SHORT.map((short, d) => (
           <button
             key={short}
@@ -76,13 +78,13 @@ export function DayPicker({
         </div>
       ) : (
         <div className="mt-3 flex items-center gap-2 text-sm font-medium" aria-live="polite">
-          <CalendarIcon className="size-[18px] flex-none text-accent" />
+          <CalendarIcon className="size-4.5 flex-none text-accent" />
           <span>{daysSummary(days)}</span>
         </div>
       )}
       <p className="mt-2 text-[13px] text-muted">
         Rest days never break your streak.{changing ? " Changes start tomorrow, so today's streak stays fair." : ""}
       </p>
-    </div>
+    </fieldset>
   );
 }

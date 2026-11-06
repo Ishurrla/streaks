@@ -3,7 +3,7 @@
 import { doc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { FirebaseError } from "firebase/app";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type SubmitEvent, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
 import { PasswordInput } from "@/components/password-input";
 import { PageHead } from "@/components/views/page-head";
@@ -94,22 +94,26 @@ export function SettingsView() {
       <ProfileSection key={profile.name} name={profile.name} email={email} onSave={(name) => save({ name }, "Profile saved.")} />
 
       <Section title="Appearance" desc="Pick a look, or follow your device.">
-        <div className="seg grid-cols-3!" role="group" aria-label="Theme">
-          {THEMES.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={profile.theme === value}
-              onClick={async () => {
-                const before = profile.theme;
-                applyTheme(value);
-                if (!(await save({ theme: value }))) applyTheme(before);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* A fieldset named "Theme" (read out, not shown) around the three-way switch. */}
+        <fieldset className="min-w-0">
+          <legend className="sr-only">Theme</legend>
+          <div className="seg grid-cols-3!">
+            {THEMES.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={profile.theme === value}
+                onClick={async () => {
+                  const before = profile.theme;
+                  applyTheme(value);
+                  if (!(await save({ theme: value }))) applyTheme(before);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
       </Section>
 
       <TimezoneSection timezone={profile.timezone} />
@@ -168,7 +172,7 @@ function ProfileSection({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return setError("Enter your name.");
@@ -265,6 +269,13 @@ function TimezoneSection({ timezone }: { timezone: string }) {
   );
 }
 
+/** What to say when deleting the account with a password fails. */
+function deleteErrorMessage(code: string): string {
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") return "That password is not right.";
+  if (code === "auth/too-many-requests") return "Too many tries. Wait a minute and try again.";
+  return "Could not delete your account. Try again.";
+}
+
 function AccountSection({
   email,
   hasPassword,
@@ -288,7 +299,7 @@ function AccountSection({
   // Bumped after each failed attempt, which hides the password again.
   const [failures, setFailures] = useState(0);
 
-  async function confirmDelete(e: FormEvent) {
+  async function confirmDelete(e: SubmitEvent) {
     e.preventDefault();
     if (!confirmWith && !password) return setError("Enter your password to confirm.");
     setBusy(true);
@@ -300,13 +311,7 @@ function AccountSection({
       setFailures((n) => n + 1);
       const code = err instanceof FirebaseError ? err.code : "";
       if (confirmWith && code) return setError(settingsError(confirmWith, code));
-      setError(
-        code === "auth/invalid-credential" || code === "auth/wrong-password"
-          ? "That password is not right."
-          : code === "auth/too-many-requests"
-            ? "Too many tries. Wait a minute and try again."
-            : "Could not delete your account. Try again.",
-      );
+      setError(deleteErrorMessage(code));
     }
   }
 
@@ -407,10 +412,15 @@ function RemindersSection({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    pushSupport().then((s) => {
-      setSupport(s);
-      setOnThisDevice(!!deviceToken());
-    });
+    pushSupport().then(
+      (s) => {
+        setSupport(s);
+        setOnThisDevice(!!deviceToken());
+      },
+      // pushSupport handles its own failures; if it ever threw anyway, say this device
+      // cannot do reminders rather than leave the switch disabled forever.
+      () => setSupport("unsupported"),
+    );
   }, []);
 
   // Must run straight from a click, so the browser allows the permission prompt.
@@ -504,7 +514,8 @@ function RemindersSection({
             onChange={(e) => {
               const value = e.target.value;
               if (/^([01]\d|2[0-3]):[0-5]\d$/.test(value) && value !== time) {
-                onSave({ reminderTime: value }, `Reminder set for ${value}.`);
+                // Not awaited on purpose: onSave catches failures itself and shows a toast.
+                void onSave({ reminderTime: value }, `Reminder set for ${value}.`);
               }
             }}
           />

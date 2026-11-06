@@ -2,7 +2,7 @@
 
 import { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { PasswordInput } from "@/components/password-input";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
@@ -135,8 +135,9 @@ export function SignInMethodsSection({
           Disconnect GitHub?
         </h2>
         <p className="text-muted">You will still be able to sign in with {remainingMethods(providers, GITHUB_PROVIDER)}.</p>
-        <div className="mt-[22px] flex gap-2.5">
-          <button className="btn btn-ghost flex-1" type="button" onClick={() => setConfirmGitHub(false)} autoFocus>
+        <div className="mt-5.5 flex gap-2.5">
+          {/* The dialog focuses its first button on opening, so "Keep it" needs no autoFocus. */}
+          <button className="btn btn-ghost flex-1" type="button" onClick={() => setConfirmGitHub(false)}>
             Keep it
           </button>
           <button
@@ -144,7 +145,8 @@ export function SignInMethodsSection({
             type="button"
             onClick={() => {
               setConfirmGitHub(false);
-              run(() => disconnect(GITHUB_PROVIDER), "GitHub disconnected.", () => "Could not disconnect GitHub. Try again.");
+              // Not awaited on purpose: run catches every failure itself and shows it as a note.
+              void run(() => disconnect(GITHUB_PROVIDER), "GitHub disconnected.", () => "Could not disconnect GitHub. Try again.");
             }}
           >
             Disconnect
@@ -156,16 +158,17 @@ export function SignInMethodsSection({
 }
 
 function SetPasswordForm({ provider, onChanged }: { provider: PopupProvider; onChanged: () => void }) {
-  const { setPassword } = useAuth();
+  // Named so, so the field's own state can be password / setPassword.
+  const { setPassword: savePassword } = useAuth();
   const toast = useToast();
-  const [password, setValue] = useState("");
+  const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string | null }>({});
   const [busy, setBusy] = useState(false);
   // Bumped after each failed attempt, which hides both passwords again.
   const [failures, setFailures] = useState(0);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     const invalid = validateNewPassword(password, confirm);
     setErrors(invalid);
@@ -173,7 +176,7 @@ function SetPasswordForm({ provider, onChanged }: { provider: PopupProvider; onC
 
     setBusy(true);
     try {
-      await setPassword(password);
+      await savePassword(password);
       onChanged();
       toast("Password set. You can now sign in with either method.");
     } catch (err) {
@@ -200,7 +203,7 @@ function SetPasswordForm({ provider, onChanged }: { provider: PopupProvider; onC
         resetKey={failures}
         autoComplete="new-password"
         value={password}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         aria-invalid={errors.password ? true : undefined}
         aria-describedby={errors.password ? "new-password-error" : undefined}
       />

@@ -70,7 +70,8 @@ export function useCheckInDays(
   to: string,
   subcollection: "checkIns" | "freezeUses" = "checkIns",
 ) {
-  const ids = [...habitIds].sort();
+  // Sorted only so the same habits always make the same cache key, in whatever order they come.
+  const ids = [...habitIds].sort((a, b) => a.localeCompare(b, "en"));
   return useLive<DaysByHabit>(["days", subcollection, uid, ids, from, to], (next, fail) => {
     const days: DaysByHabit = {};
     if (ids.length === 0) {

@@ -8,10 +8,19 @@ export interface AuthFields {
 
 export type AuthErrors = Partial<Record<keyof AuthFields | "form", string>>;
 
-const EMAIL_RE = /^\S+@\S+\.\S+$/;
-
+/**
+ * A quick shape check before Firebase checks it properly: something@something.something,
+ * with no spaces. Done without a regex, in one pass, so long input cannot slow it down
+ * (/^\S+@\S+\.\S+$/ could backtrack). It accepts exactly what that regex accepted, using the
+ * places it could match most easily: the first "@" after the first character, and the last
+ * "." that still has a character after it.
+ */
 export function isEmail(value: string): boolean {
-  return EMAIL_RE.test(value.trim());
+  const v = value.trim();
+  if (/\s/.test(v)) return false;
+  const at = v.indexOf("@", 1);
+  const dot = v.lastIndexOf(".", v.length - 2);
+  return at >= 1 && dot >= at + 2;
 }
 
 /** Client-side checks, with the messages from the design prototype. */

@@ -68,10 +68,10 @@ function remember(value: ThemeMode | null) {
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   if (theme === "light" || theme === "dark") {
-    root.setAttribute("data-theme", theme);
+    root.dataset.theme = theme;
     remember(theme);
   } else {
-    root.removeAttribute("data-theme");
+    delete root.dataset.theme;
     remember(null);
   }
   window.dispatchEvent(new Event(CHANGE_EVENT));

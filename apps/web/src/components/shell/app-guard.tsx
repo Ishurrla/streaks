@@ -7,14 +7,16 @@ import { useAuth } from "@/lib/auth";
 import { devWithEmulators } from "@/lib/firebase";
 import { ProfileProvider, useProfileDoc } from "@/lib/profile";
 
+/** Full-screen loading state. <output> is the native role="status": the label is announced politely. */
 function Splash({ label }: { label: string }) {
   return (
-    <div className="grid min-h-dvh place-items-center" role="status">
-      <div className="flex flex-col items-center gap-3 text-muted">
+    <output className="grid min-h-dvh place-items-center">
+      {/* A span, not a div: <output> holds inline content only. */}
+      <span className="flex flex-col items-center gap-3 text-muted">
         <Flame live className="size-12!" />
         <span className="text-sm">{label}</span>
-      </div>
-    </div>
+      </span>
+    </output>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, localToday, monthDays, shiftMonth, weekdayShort } from "./dates";
+import { addDays, greeting, localToday, monthDays, shiftMonth, weekdayShort } from "./dates";
 
 describe("display dates", () => {
   it("finds today in the saved timezone, not the browser's", () => {
@@ -25,5 +25,23 @@ describe("display dates", () => {
   it("moves between months across a year end", () => {
     expect(shiftMonth({ year: 2026, month: 11 }, 1)).toEqual({ year: 2027, month: 0 });
     expect(shiftMonth({ year: 2026, month: 0 }, -1)).toEqual({ year: 2025, month: 11 });
+  });
+});
+
+describe("greeting", () => {
+  it("changes at noon and at six in the evening, local time", () => {
+    expect(greeting("UTC", new Date("2026-11-06T11:59:00Z"))).toBe("Good morning");
+    expect(greeting("UTC", new Date("2026-11-06T12:00:00Z"))).toBe("Good afternoon");
+    expect(greeting("UTC", new Date("2026-11-06T17:59:00Z"))).toBe("Good afternoon");
+    expect(greeting("UTC", new Date("2026-11-06T18:00:00Z"))).toBe("Good evening");
+    expect(greeting("UTC", new Date("2026-11-06T00:00:00Z"))).toBe("Good morning");
+  });
+
+  it("uses the hour in the given time zone", () => {
+    // 11:30 UTC is 12:30 in Lagos and 20:30 in Tokyo.
+    const now = new Date("2026-11-06T11:30:00Z");
+    expect(greeting("UTC", now)).toBe("Good morning");
+    expect(greeting("Africa/Lagos", now)).toBe("Good afternoon");
+    expect(greeting("Asia/Tokyo", now)).toBe("Good evening");
   });
 });

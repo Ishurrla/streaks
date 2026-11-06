@@ -76,7 +76,10 @@ test("new user: signs up with GitHub, named from GitHub, and GitHub is the only 
   await page.waitForLoadState("networkidle");
   await expect(page.getByText("We only use Google or GitHub to confirm who you are. We never post anything and never see your code.")).toBeVisible();
   await inGitHubWindow(page, () => githubButton(page, "up").click(), GRACE);
-  await expect(page.getByRole("heading", { name: "Welcome, Grace" })).toBeVisible();
+  const welcome = page.getByRole("heading", { name: "Welcome, Grace" });
+  await expect(welcome).toBeVisible();
+  // The welcome replaces the form, so focus moves to its heading instead of being lost.
+  await expect(welcome).toBeFocused();
   await page.waitForURL("**/today");
 
   await page.goto("/settings");
@@ -165,7 +168,27 @@ test("Settings: connect GitHub to a password account, then disconnect it", async
   await page.getByRole("button", { name: "Disconnect GitHub" }).click();
   const dialog = page.getByRole("dialog", { name: "Disconnect GitHub?" });
   await expect(dialog).toContainText("You will still be able to sign in with your password.");
+  // The dialog puts focus on its first button, the safe choice.
+  await expect(dialog.getByRole("button", { name: "Keep it" })).toBeFocused();
   await dialog.getByRole("button", { name: "Disconnect" }).click();
   await expect(section).not.toContainText(PAT_GITHUB);
   await expect(page.getByRole("button", { name: "Connect GitHub" })).toBeVisible();
+});
+
+test("Settings: a GitHub-only account sets a password after confirming with GitHub", async ({ page }) => {
+  const ada = { email: `ada.${run}@example.com`, name: "Ada Lovelace" };
+  await page.goto("/signup");
+  await page.waitForLoadState("networkidle");
+  await inGitHubWindow(page, () => githubButton(page, "up").click(), ada);
+  await page.waitForURL("**/today");
+
+  await page.goto("/settings");
+  await page.getByRole("heading", { name: "Sign-in methods" }).waitFor();
+  await expect(page.getByRole("button", { name: "Disconnect GitHub" })).toBeDisabled();
+  await page.fill("#new-password", "ada-password-123");
+  await page.fill("#confirm-password", "ada-password-123");
+  await inGitHubWindow(page, () => page.getByRole("button", { name: "Set a password" }).click(), { ...ada, existing: true });
+  await expect(page.getByText("Password set. You can now sign in with either method.")).toBeVisible();
+  // Now there are two ways in, so GitHub can be disconnected.
+  await expect(page.getByRole("button", { name: "Disconnect GitHub" })).toBeEnabled();
 });
