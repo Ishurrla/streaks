@@ -3,6 +3,7 @@ import {
   connectAuthEmulator,
   createUserWithEmailAndPassword,
   EmailAuthProvider,
+  fetchSignInMethodsForEmail,
   getAuth,
   GoogleAuthProvider,
   linkWithCredential,
@@ -31,11 +32,12 @@ import { POST as ensureProfile } from "@/app/api/ensure-profile/route";
 import { addPassword } from "@/lib/add-password";
 import {
   canDisconnect,
+  existingMethod,
   GOOGLE_PROVIDER,
   googleSettingsError,
   googleSignInNote,
-  isGoogleOnly,
   PASSWORD_PROVIDER,
+  reauthProvider,
 } from "@/lib/sign-in";
 import { post } from "./helpers";
 
@@ -77,7 +79,8 @@ const ADA = { sub: "g-ada", email: "ada@example.com", name: "Ada Obi" };
 describe("signing in with Google", () => {
   it("creates one account, and finds it again on return", async () => {
     const first = await google(ADA);
-    expect(isGoogleOnly(providers(first))).toBe(true);
+    // No password: Google confirms it is them, for a new password or deleting the account.
+    expect(reauthProvider(providers(first))).toBe(GOOGLE_PROVIDER);
     await signOut(auth);
     expect((await google(ADA)).uid).toBe(first.uid);
   });
@@ -87,7 +90,10 @@ describe("signing in with Google", () => {
     await signOut(auth);
     const code = await codeOf(google({ sub: "g-a", email: "a@example.com", emailVerified: false }));
     expect(code).toBe("auth/account-exists-with-different-credential");
-    expect(googleSignInNote(code).action?.does).toBe("go-to-login");
+    // The emulator has no email enumeration protection, so the existing method is known.
+    const existing = existingMethod(await fetchSignInMethodsForEmail(auth, "a@example.com"), GOOGLE_PROVIDER);
+    expect(existing).toBe(PASSWORD_PROVIDER);
+    expect(googleSignInNote(code, existing).action?.does).toBe("go-to-login");
   });
 
   it("keeps an unverified password account's uid and data, but removes its password", async () => {

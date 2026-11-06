@@ -14,7 +14,7 @@ import { callUpdateTimezone } from "@/lib/data";
 import { db, realPushAvailable } from "@/lib/firebase";
 import { deviceToken, disablePushOnThisDevice, enablePushOnThisDevice, PushBlockedError, pushSupport, type PushSupport } from "@/lib/push";
 import { useProfile } from "@/lib/profile";
-import { googleSettingsError, isGoogleOnly, PASSWORD_PROVIDER } from "@/lib/sign-in";
+import { googleSettingsError, PASSWORD_PROVIDER, reauthProvider } from "@/lib/sign-in";
 import { applyTheme } from "@/lib/theme";
 import type { Profile, Theme } from "@/lib/types";
 
@@ -134,7 +134,7 @@ export function SettingsView() {
       <AccountSection
         email={email}
         hasPassword={providers.includes(PASSWORD_PROVIDER)}
-        googleOnly={isGoogleOnly(providers)}
+        googleOnly={reauthProvider(providers) !== null}
         onReset={async () => {
           if (!email) return;
           try {

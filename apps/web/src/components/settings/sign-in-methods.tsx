@@ -11,8 +11,8 @@ import {
   canDisconnect,
   GOOGLE_PROVIDER,
   googleSettingsError,
-  isGoogleOnly,
   PASSWORD_PROVIDER,
+  reauthProvider,
   validateNewPassword,
 } from "@/lib/sign-in";
 
@@ -29,7 +29,7 @@ export function SignInMethodsSection({
   providers: string[];
   onChanged: () => void;
 }) {
-  const { connectGoogle, disconnectGoogle } = useAuth();
+  const { connect, disconnect } = useAuth();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function SignInMethodsSection({
             className="btn btn-ghost btn-small"
             type="button"
             disabled={busy || !canDisconnect(providers, GOOGLE_PROVIDER)}
-            onClick={() => run(disconnectGoogle, "Google disconnected.", () => "Could not disconnect Google. Try again.")}
+            onClick={() => run(() => disconnect(GOOGLE_PROVIDER), "Google disconnected.", () => "Could not disconnect Google. Try again.")}
           >
             Disconnect
           </button>
@@ -93,7 +93,7 @@ export function SignInMethodsSection({
             className="btn btn-ghost btn-small"
             type="button"
             disabled={busy}
-            onClick={() => run(connectGoogle, "Google connected.", googleSettingsError)}
+            onClick={() => run(() => connect(GOOGLE_PROVIDER), "Google connected.", googleSettingsError)}
           >
             Connect
           </button>
@@ -107,7 +107,7 @@ export function SignInMethodsSection({
         </div>
       )}
 
-      {isGoogleOnly(providers) && <SetPasswordForm onChanged={onChanged} />}
+      {reauthProvider(providers) === GOOGLE_PROVIDER && <SetPasswordForm onChanged={onChanged} />}
     </section>
   );
 }

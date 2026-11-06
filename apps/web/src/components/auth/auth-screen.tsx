@@ -9,9 +9,9 @@ import { Flame } from "@/components/icons";
 import { PasswordInput } from "@/components/password-input";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useToast } from "@/components/toast";
-import { useAuth, type GoogleSignIn } from "@/lib/auth";
+import { existingMethodFor, useAuth, type ProviderSignIn } from "@/lib/auth";
 import { devWithEmulators, EMULATOR_PORTS, emulatorHost } from "@/lib/firebase";
-import { googleSignInNote, type AuthNote } from "@/lib/sign-in";
+import { GOOGLE_PROVIDER, googleSignInNote, type AuthNote } from "@/lib/sign-in";
 import {
   authErrorFromCode,
   isEmail,
@@ -92,7 +92,7 @@ function AuthScreenWithParams({ mode }: { mode: AuthMode }) {
 function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | null }) {
   const router = useRouter();
   const next = safeNext(nextParam);
-  const { state, signUp, logIn, signInWithGoogle, sendPasswordReset } = useAuth();
+  const { state, signUp, logIn, signInWith, sendPasswordReset } = useAuth();
   const toast = useToast();
 
   const [fields, setFields] = useState<AuthFields>({ name: "", email: "", password: "" });
@@ -102,7 +102,7 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
   const [failures, setFailures] = useState(0);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [note, setNote] = useState<AuthNote | null>(null);
-  const [welcome, setWelcome] = useState<GoogleSignIn | null>(null);
+  const [welcome, setWelcome] = useState<ProviderSignIn | null>(null);
   // Holds the redirect below while Google sign-in finishes and the welcome tick plays.
   const googleInProgress = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -174,11 +174,12 @@ function AuthForm({ mode, nextParam }: { mode: AuthMode; nextParam: string | nul
     setNote(null);
     setErrors({});
     try {
-      setWelcome(await signInWithGoogle());
+      setWelcome(await signInWith(GOOGLE_PROVIDER));
     } catch (err) {
       googleInProgress.current = false;
       const code = err instanceof FirebaseError ? err.code : undefined;
-      const shown = googleSignInNote(code);
+      const existing = code === "auth/account-exists-with-different-credential" ? await existingMethodFor(err, GOOGLE_PROVIDER) : null;
+      const shown = googleSignInNote(code, existing);
       if (shown.action?.does === "retry") console.error("Google sign-in failed:", code ?? err);
       setNote(
         devWithEmulators && code === "auth/network-request-failed"
