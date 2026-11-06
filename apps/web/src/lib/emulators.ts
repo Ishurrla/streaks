@@ -26,6 +26,15 @@ export function emulatorPorts(env: { auth?: string; firestore?: string }): Emula
   return { auth: port(env.auth, DEFAULT_EMULATOR_PORTS.auth), firestore: port(env.firestore, DEFAULT_EMULATOR_PORTS.firestore) };
 }
 
+/**
+ * The project the browser uses on the emulators: NEXT_PUBLIC_EMULATOR_PROJECT_ID if it is a
+ * demo- project (which can never reach live resources), else demo-streaks. The test
+ * emulators run as demo-streaks-test, so they never mix with `pnpm dev`'s.
+ */
+export function emulatorProjectId(value: string | undefined): string {
+  return value?.startsWith("demo-") ? value : "demo-streaks";
+}
+
 /** Whether the browser uses the emulators: the explicit flag, or no real web config at all. */
 export function usesEmulators(env: { flag?: string; apiKey?: string }): boolean {
   return env.flag === "true" || !env.apiKey;

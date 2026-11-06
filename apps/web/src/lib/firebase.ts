@@ -3,7 +3,7 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
-import { emulatorPorts, usesEmulators } from "./emulators";
+import { emulatorPorts, emulatorProjectId, usesEmulators } from "./emulators";
 
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -42,11 +42,12 @@ export const EMULATOR_PORTS = emulatorPorts({
   firestore: process.env.NEXT_PUBLIC_EMULATOR_FIRESTORE_PORT,
 });
 
-// On the emulators the app always uses the demo-streaks project, even when real config is
-// set: the emulators run as demo-streaks (ID tokens are checked against the project ID), and a demo
-// project cannot reach live resources.
+// On the emulators the app always uses a demo- project (demo-streaks unless
+// NEXT_PUBLIC_EMULATOR_PROJECT_ID names another), even when real config is set: ID tokens are
+// checked against the project ID, and a demo project cannot reach live resources.
+const emulatorProject = emulatorProjectId(process.env.NEXT_PUBLIC_EMULATOR_PROJECT_ID);
 const config: FirebaseOptions = usingEmulators
-  ? { apiKey: "demo-key", projectId: "demo-streaks", authDomain: "demo-streaks.firebaseapp.com" }
+  ? { apiKey: "demo-key", projectId: emulatorProject, authDomain: `${emulatorProject}.firebaseapp.com` }
   : webConfig;
 
 function init() {

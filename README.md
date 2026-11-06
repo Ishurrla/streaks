@@ -57,6 +57,16 @@ To run the two halves separately: `pnpm emulators` (no saved data) and `pnpm dev
 Auth emulator's own window: choose "Add new account", then "Auto-generate user information" or fill
 in a name and email. Settings > Sign-in methods and deleting a Google-only account use the same window.
 
+**GitHub sign-in locally** works the same way: the GitHub button opens the emulator's window, where
+"Add new account" asks for an email and an optional display name. Two differences from real GitHub:
+- **It always reports the email as verified.** The emulator then merges a GitHub sign-in into an
+  existing account with that email. Real Firebase refuses instead, and the app shows "This email
+  already has an account".
+- **It insists on an email,** so the "GitHub did not share a verified email" case cannot be tried
+  there; `src/lib/auth.test.tsx` covers it.
+
+Setting GitHub up for real is in docs/DEPLOYMENT.md, "Enabling GitHub sign-in".
+
 ### Troubleshooting: Local dev: styles or new components missing
 
 - **Symptom:** after pulling or switching branches, `pnpm dev` shows no styles, or a new component
@@ -184,15 +194,24 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Every `/api` route: tokens, input, other users, catch-up | `apps/web/test/routes/*.test.ts` | yes |
 | Cron endpoints: secret, both jobs | `apps/web/test/routes/cron.test.ts` | yes |
 | Google sign-in, linking, set password, delete (real client SDK, no popup) | `apps/web/test/routes/google-account.test.ts` | yes |
+| GitHub sign-in, existing email, linking, set password, delete, profile name (real client SDK, no popup) | `apps/web/test/routes/github-account.test.ts` | yes |
+| A GitHub sign-in with no email is undone and gets no profile (jsdom) | `apps/web/src/lib/auth.test.tsx` | no |
 | Web date, form, theme and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
 | Theme switch, password field, day picker and landing navbar (jsdom) | `apps/web/src/components/**/*.test.tsx` | no |
 | No sideways scroll at 360 to 1280px, light and dark (real browser) | `apps/web/e2e/layout.spec.ts` | `pnpm dev` |
 | Celebrations and sheets block the page behind them: clicks, double-clicks, Tab, scrolling (real browser) | `apps/web/e2e/overlays.spec.ts` | `pnpm dev` |
+| GitHub through the emulator's real GitHub window: new and returning user, cancel, existing email, connect, disconnect, delete (real browser) | `apps/web/e2e/github.spec.ts` | `pnpm test:github` |
 
 The browser tests are separate from `pnpm test` because they drive the running app. With `pnpm dev`
 up, run `pnpm test:layout`. It signs up a throwaway user on the emulators and deletes it at the end,
 uses your installed Chrome, and refuses to run against anything but localhost. Set
 `LAYOUT_BASE_URL` to point it at another local server, such as `next start` on another port.
+
+`pnpm test:github` runs the GitHub browser test on the **test** emulators (as `demo-streaks-test`),
+never `pnpm dev`'s, and can run while `pnpm dev` is up. It starts them, builds the app pointed at
+them, serves it on port 3201, and stops everything at the end. That build replaces
+`apps/web/.next`'s production build (not the dev server's), so run `pnpm build` again before using
+`next start` yourself. It needs no setup beyond `pnpm install` and Chrome.
 
 One part at a time:
 

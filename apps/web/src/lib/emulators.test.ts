@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkEmulators, emulatorPorts, usesEmulators } from "./emulators";
+import { checkEmulators, emulatorPorts, emulatorProjectId, usesEmulators } from "./emulators";
 
 const PORTS = { auth: 9099, firestore: 8080 };
 
@@ -38,6 +38,18 @@ describe("emulatorPorts", () => {
   it("ignores values that are not a port", () => {
     expect(emulatorPorts({ auth: "abc", firestore: "70000" })).toEqual({ auth: 9099, firestore: 8080 });
     expect(emulatorPorts({ auth: "", firestore: "-1" })).toEqual({ auth: 9099, firestore: 8080 });
+  });
+});
+
+describe("emulatorProjectId", () => {
+  it("is demo-streaks unless another demo- project is named", () => {
+    expect(emulatorProjectId(undefined)).toBe("demo-streaks");
+    expect(emulatorProjectId("demo-streaks-test")).toBe("demo-streaks-test");
+  });
+
+  it("never names a real project", () => {
+    expect(emulatorProjectId("streaks-b1dca")).toBe("demo-streaks");
+    expect(emulatorProjectId("")).toBe("demo-streaks");
   });
 });
 

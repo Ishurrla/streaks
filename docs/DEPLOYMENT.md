@@ -149,12 +149,12 @@ without these values a preview refuses to start rather than misbehave.
 1. Firebase console > Build > **Authentication** > Settings > **Authorized domains** > Add domain:
    `<project-name>.vercel.app` (no `https://`). Add your custom domain too if you have one.
 2. Same page, **Sign-in method**: make sure **Email/Password** and **Google** are enabled. Google asks
-   for a project support email.
+   for a project support email. For GitHub, follow "Enabling GitHub sign-in" below.
 3. Same page, Settings > **User account linking**: **Link accounts that use the same email**. The app
    relies on one account per email.
    
 **Check:** the list holds `localhost`, `streaks-b1dca.firebaseapp.com`, `streaks-b1dca.web.app` and
-your Vercel domain; Sign-in method shows Email/Password and Google as Enabled.
+your Vercel domain; Sign-in method shows Email/Password and Google (and GitHub, once set up) as Enabled.
 
 ## 6. First deploy
 
@@ -260,6 +260,45 @@ it adds a habit, and the old rules reject both, so adding a habit would fail bet
 and the rules deploy. The new rules still accept habits from the old app, so going rules-first is safe.
 Nothing else changes: no new env vars, no new indexes, and the cron keeps the same endpoints, secret
 and schedule.
+
+## Enabling GitHub sign-in
+
+The app has a "Sign up / Sign in with GitHub" button and a GitHub row in Settings. They need the
+GitHub provider switched on in Firebase. Firebase holds the only secret. Nothing goes in the repo
+or in Vercel: no new environment variables, and no redeploy is needed.
+
+1. **Copy the callback URL from Firebase.** Firebase console > Build > **Authentication** > **Sign-in
+   method** > **Add new provider** > **GitHub**. Turn on **Enable**, and copy the **authorization
+   callback URL** it shows (`https://streaks-b1dca.firebaseapp.com/__/auth/handler`). Leave this
+   page open.
+2. **Create a GitHub OAuth App.** GitHub > your profile picture > **Settings** > **Developer settings** >
+   **OAuth Apps** > **New OAuth App**:
+   - Application name: `Streaks`
+   - Homepage URL: your site, for example `https://streakshabit.vercel.app`
+   - Authorization callback URL: the URL from step 1, exactly
+   - Leave "Enable Device Flow" off. **Register application**.
+3. **Copy the Client ID**, then **Generate a new client secret** and copy it. GitHub shows the secret
+   once.
+4. **Back in Firebase,** paste the **Client ID** and **Client secret**, then **Save**. The secret lives
+   only there; do not write it anywhere else.
+
+**Check:**
+- Sign-in method lists GitHub as Enabled.
+- On the live site, Sign up > **Sign up with GitHub** opens GitHub's own "Authorize Streaks" page.
+  It asks only to read your email addresses.
+- After authorizing, you land on Today with the name from your GitHub profile.
+- Settings > Sign-in methods shows GitHub with your GitHub email.
+- `redirect_uri is not associated with this application` on GitHub means the callback URL in the
+  OAuth App does not match Firebase's exactly.
+
+Worth knowing:
+- **Email enumeration protection.** It is on by default (Authentication > Settings > User actions).
+  With it on, Firebase will not say how an existing email signs in. So when a GitHub email already
+  has an account, the app says "Log in with the method you used before" rather than naming the
+  password or Google. That is expected.
+- **One account per email.** The app relies on Firebase's default ("Link accounts that use the same
+  email", step 5). GitHub is not a provider Firebase trusts to merge accounts, so an email that
+  already has a password or Google account is refused rather than merged.
 
 ## After deploying
 
