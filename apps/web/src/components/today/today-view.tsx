@@ -119,12 +119,6 @@ export function TodayView() {
   });
 
   useEffect(() => {
-    if (!celebrate) return;
-    const t = setTimeout(() => setCelebrate(false), 5000);
-    return () => clearTimeout(t);
-  }, [celebrate]);
-
-  useEffect(() => {
     if (!popId) return;
     const t = setTimeout(() => setPopId(null), 900);
     return () => clearTimeout(t);

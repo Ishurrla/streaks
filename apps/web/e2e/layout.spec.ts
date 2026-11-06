@@ -96,6 +96,8 @@ test("app screens never scroll sideways", async ({ page }) => {
     if (i === 0) await expectNoSideScroll(page, "Add habit sheet");
     await page.locator("dialog[open]").getByRole("button", { name: "Add habit" }).click();
     await page.locator("dialog[open]").waitFor({ state: "detached" }).catch(() => undefined);
+    // Right after a sheet closes, clicks are briefly swallowed (see Sheet).
+    await page.waitForFunction(() => !document.documentElement.hasAttribute("data-click-shield"));
     await expect(page.getByText(name)).toBeVisible();
   }
   await expectNoSideScroll(page, "Habits");
@@ -127,8 +129,7 @@ test("app screens never scroll sideways", async ({ page }) => {
     await checkOff(page.locator(".habit-card:not(.done)").first());
     await expect(page.locator(".habit-card.done")).toHaveCount(i + 1);
   }
-  // It closes itself after 5 seconds; a sweep with short pauses takes under two, and it
-  // must still be open at the end for the check to count.
+  // A quick sweep with short pauses; it must still be open at the end for the check to count.
   const celebration = page.locator("dialog.celeb[open]");
   await celebration.waitFor();
   await expectNoSideScroll(page, "All-done celebration", WIDTHS, 100);

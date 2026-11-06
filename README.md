@@ -187,8 +187,9 @@ never touches your dev data (nor stops `pnpm dev` from saving it on exit).
 | Web date, form, theme and emulator-check helpers | `apps/web/src/lib/*.test.ts` | no |
 | Theme switch, password field, day picker and landing navbar (jsdom) | `apps/web/src/components/**/*.test.tsx` | no |
 | No sideways scroll at 360 to 1280px, light and dark (real browser) | `apps/web/e2e/layout.spec.ts` | `pnpm dev` |
+| Celebrations and sheets block the page behind them: clicks, double-clicks, Tab, scrolling (real browser) | `apps/web/e2e/overlays.spec.ts` | `pnpm dev` |
 
-The layout test is separate from `pnpm test` because it drives the running app. With `pnpm dev`
+The browser tests are separate from `pnpm test` because they drive the running app. With `pnpm dev`
 up, run `pnpm test:layout`. It signs up a throwaway user on the emulators and deletes it at the end,
 uses your installed Chrome, and refuses to run against anything but localhost. Set
 `LAYOUT_BASE_URL` to point it at another local server, such as `next start` on another port.
